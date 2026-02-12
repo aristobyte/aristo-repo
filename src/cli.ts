@@ -3,7 +3,8 @@
 import { Command } from "commander";
 import { spawnSync } from "node:child_process";
 import { info, LogMode } from "./log.js";
-import { runScript } from "./runner.js";
+import { runApplyOrgFlow, runCreateFlow, runInitTeamsFlow, runRemoveTeamsFlow, runValidateFlow } from "./app.js";
+import { runCompatScript } from "./commands/compat.js";
 
 const program = new Command();
 
@@ -24,11 +25,7 @@ program
   .argument("<org>", "GitHub organization")
   .argument("<repo>", "repository name")
   .action(async (org: string, repo: string) => {
-    await runScript({
-      script: "scripts/end/create_repo.sh",
-      args: [org, repo],
-      mode: logMode()
-    });
+    await runCreateFlow(org, repo, logMode());
   });
 
 program
@@ -36,11 +33,7 @@ program
   .description("Apply configured modules to all repos in one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runScript({
-      script: "scripts/end/apply_org_config.sh",
-      args: [org],
-      mode: logMode()
-    });
+    await runApplyOrgFlow(org, logMode());
   });
 
 program
@@ -48,11 +41,7 @@ program
   .description("Create/update managed teams for one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runScript({
-      script: "scripts/end/init_org_teams.sh",
-      args: [org],
-      mode: logMode()
-    });
+    await runInitTeamsFlow(org, logMode());
   });
 
 program
@@ -60,42 +49,31 @@ program
   .description("Remove managed teams for one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runScript({
-      script: "scripts/end/remove_org_teams.sh",
-      args: [org],
-      mode: logMode()
-    });
+    await runRemoveTeamsFlow(org, logMode());
   });
 
 program
   .command("validate")
-  .description("Validate local JSON configs and shell scripts")
-  .action(async () => {
-    await runScript({
-      script: "scripts/validate_project.sh",
-      mode: logMode()
-    });
+  .description("Validate local JSON config files")
+  .action(() => {
+    runValidateFlow();
   });
 
 program
   .command("exec")
-  .description("Execute any internal shell module under scripts/ with colored logs")
-  .argument("<script>", "script path relative to repo root, e.g. scripts/update_rulesets_org.sh")
+  .description("Execute compatibility command ids (legacy script names are still accepted)")
+  .argument("<script>", "compat id, e.g. scripts/update_rulesets_org.ts")
   .argument("[args...]", "arguments to pass to the script")
   .action(async (script: string, args: string[] = []) => {
-    await runScript({
-      script,
-      args,
-      mode: logMode()
-    });
+    await runCompatScript(script, args, logMode());
   });
 
 program
   .command("doctor")
-  .description("Quick environment checks for gh/jq/bash")
+  .description("Quick environment checks for gh/node")
   .action(() => {
     const mode = logMode();
-    const checks = ["gh", "jq", "bash"];
+    const checks = ["gh", "node"];
 
     for (const c of checks) {
       const result = spawnSync("bash", ["-lc", `command -v ${c}`], {

@@ -6,13 +6,8 @@
     "max_repos_per_org": 0
   },
   "policy": {
-    "policy_dir": "./policy",
-    "ruleset_files": [
-      "core-branches-ruleset.json",
-      "release-branches-ruleset.json",
-      "tag-protection-ruleset.json"
-    ],
-    "ruleset_file": "core-branches-ruleset.json",
+    "repo_settings_config": "./config/repo-settings.config.json",
+    "rulesets_config": "./config/rulesets.config.json",
     "ruleset_name": ""
   },
   "operations": {

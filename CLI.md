@@ -29,6 +29,12 @@ aristo-repo exec <script> [args...]
 aristo-repo doctor
 ```
 
+## Implementation Notes
+
+- `create`, `apply-org`, `init-teams`, `remove-teams`, `validate` are handled directly by TS CLI flow code.
+- `exec` remains the escape hatch for running compatibility command ids (`scripts/...` legacy ids are accepted).
+- Script compatibility entrypoints now use `.ts` paths.
+
 ## Colored Output
 
 The CLI colorizes shell script output by semantic patterns:

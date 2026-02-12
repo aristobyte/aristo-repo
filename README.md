@@ -23,46 +23,57 @@ aristo-repo remove-teams <org>
 aristo-repo validate
 ```
 
+## Build And Publish
+
+```bash
+npm run check
+npm run build
+npm run publish:dry-run
+npm run publish:npm
+```
+
+One-step publish flow:
+
+```bash
+npm run release
+```
+
+Shell scripts (under `./scripts/`):
+
+```bash
+bash ./scripts/build.sh
+bash ./scripts/bump.sh patch
+bash ./scripts/publish.sh --dry-run
+```
+
 Detailed CLI docs: `./CLI.md`
 
-## Shell End Commands
+## Current TS Migration Status
 
-These are still available and are used internally by the CLI.
+The CLI is now TS-native for:
 
-1. Create one repo + apply repo bootstrap
+- `create` orchestration
+- `apply-org` orchestration
+- `validate` checks
+- Actions policy application (repo + org flows)
+- Security policy application (repo + org flows)
+- Environments policy application (repo + org flows)
 
-```bash
-bash ./scripts/end/create_repo.sh <org> <repo>
-```
+The repository is now TS-only for operational logic.
 
-2. Apply all config modules to all repos in org
+## Compatibility Commands
 
-```bash
-bash ./scripts/end/apply_org_config.sh <org>
-```
-
-3. Create/update teams in org
-
-```bash
-bash ./scripts/end/init_org_teams.sh <org>
-```
-
-4. Remove managed teams in org
+Use `aristo-repo exec` with legacy command ids for backward compatibility.
 
 ```bash
-bash ./scripts/end/remove_org_teams.sh <org>
-```
-
-5. Validate local project config + scripts
-
-```bash
-bash ./scripts/validate_project.sh
+aristo-repo exec scripts/update_rulesets_org.ts --org aristobyte --config ./config/management.json --dry-run
+aristo-repo exec scripts/validate_project.ts
 ```
 
 ## Source of Truth
 
 - Runtime/module toggles: `./config/app.config.json`
-- Repo/rulesets policy: `./config/management.json`, `./policy/*.json`
+- Repo/rulesets policy: `./config/management.json`, `./config/repo-settings.config.json`, `./config/rulesets.config.json`
 - Teams: `./config/teams.config.json`
 - Actions: `./config/actions.config.json`
 - Security: `./config/security.config.json`
@@ -71,10 +82,10 @@ bash ./scripts/validate_project.sh
 
 ## Architecture
 
-- `scripts/end/*`: end-use orchestration commands
-- `scripts/update_*_repo.sh`: repo-scoped internal modules
-- `scripts/update_*_org.sh`: org-wide internal modules
-- `scripts/init_*`: specialized initializers (discussions, teams)
+- `src/*`: primary TS CLI and module logic
+- `src/commands/*`: command/compat dispatch layer
+- `src/utils/*`: shared utility helpers
+- `scripts/`: reserved for Bash scripts (currently empty)
 
 ## Notes
 
