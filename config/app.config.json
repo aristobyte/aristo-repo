@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "defaults": {
+    "dry_run": false,
+    "allow_private": true,
+    "include_archived": false,
+    "max_repos": 0
+  },
+  "modules": {
+    "repo_create": {
+      "enabled": true,
+      "visibility": "public",
+      "description": "",
+      "template": "",
+      "apply_repo_policy": true
+    },
+    "rulesets": {
+      "enabled": true,
+      "config": "./config/management.json"
+    },
+    "discussions": {
+      "enabled": true,
+      "config": "./config/discussions.config.json"
+    },
+    "actions": {
+      "enabled": true,
+      "config": "./config/actions.config.json"
+    },
+    "security": {
+      "enabled": true,
+      "config": "./config/security.config.json"
+    },
+    "environments": {
+      "enabled": true,
+      "config": "./config/environments.config.json"
+    },
+    "teams": {
+      "enabled": true,
+      "config": "./config/teams.config.json"
+    }
+  }
+}

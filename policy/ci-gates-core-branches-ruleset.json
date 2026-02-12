@@ -1,0 +1,34 @@
+{
+  "name": "core-branches-ci-gates",
+  "target": "branch",
+  "enforcement": "disabled",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/master",
+        "refs/heads/main",
+        "refs/heads/dev",
+        "refs/heads/nonprod",
+        "refs/heads/prod",
+        "refs/heads/netlify",
+        "refs/heads/vercel"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": true,
+        "required_status_checks": [
+          {
+            "context": "ci"
+          }
+        ]
+      }
+    }
+  ]
+}

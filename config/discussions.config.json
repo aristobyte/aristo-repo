@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "org": "aristobyte",
+  "template": {
+    "category_groups": [
+      {
+        "name": "General",
+        "sections": ["Announcements", "General"]
+      },
+      {
+        "name": "AristoByte Starters",
+        "sections": ["Q&A", "Starters Chat"]
+      },
+      {
+        "name": "Dev Chat",
+        "sections": ["Dev Chat", "Important"]
+      }
+    ],
+    "categories": [
+      {
+        "name": "Announcements",
+        "description": "Updates from maintainers",
+        "emoji": "🔔",
+        "is_answerable": false
+      },
+      {
+        "name": "General",
+        "description": "Chat about anything and everything here",
+        "emoji": ":octocat:",
+        "is_answerable": false
+      },
+      {
+        "name": "Q&A",
+        "description": "Ask the community for help",
+        "emoji": "💬",
+        "is_answerable": true
+      },
+      {
+        "name": "Starters Chat",
+        "description": "A chat for AristoByte New joiners",
+        "emoji": ":atom:",
+        "is_answerable": false
+      },
+      {
+        "name": "Dev Chat",
+        "description": "A chat for AristoByte Developers",
+        "emoji": ":dependabot:",
+        "is_answerable": false
+      },
+      {
+        "name": "Important",
+        "description": "Only important/critical topics to be discussed here",
+        "emoji": "‼️",
+        "is_answerable": false
+      }
+    ],
+    "labels": [
+      { "name": "aristobyte-starters", "color": "0E8A16", "description": "Starter-community related" },
+      { "name": "aristobyte-dev", "color": "1D76DB", "description": "Developer-community related" },
+      { "name": "announcement", "color": "5319E7", "description": "Official announcement" },
+      { "name": "no-team", "color": "BFD4F2", "description": "No specific team assigned" },
+      { "name": "help wanted", "color": "008672", "description": "Needs community help" },
+      { "name": "question", "color": "D876E3", "description": "Question thread" },
+      { "name": "q&a", "color": "FBCA04", "description": "Q&A category thread" },
+      { "name": "important", "color": "B60205", "description": "Important thread" }
+    ],
+    "initial_discussions": [
+      {
+        "title": "Announcements",
+        "category": "Announcements",
+        "labels": ["aristobyte-starters", "aristobyte-dev", "announcement", "no-team"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/76a7995b-bee5-4e68-8dc8-f33a7b17e345)\n# 📢 Welcome to AristoByte Announcements\n\nThis space is reserved for official updates, roadmap visibility, release notes, and key decisions made by the AristoByte leadership and maintainers.\n\n📌 Only maintainers and core team members can post here.\n✅ Subscribe to stay informed about critical organizational and project-level developments."
+      },
+      {
+        "title": "Starters Chat",
+        "category": "Starters Chat",
+        "labels": ["aristobyte-starters"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/9b5d2ca4-68db-4797-b69f-00161d585ef6)\n👋 Welcome Starters: Introduce Yourself + First Steps\n\nWhether you're new to AristoByte or just starting out in the ecosystem — this is your home base.\n✅ Say hello\n🧭 Ask for onboarding tips\n🚀 Share what you’re working on\n\nWe're excited to have you on board. Let’s build something incredible together."
+      },
+      {
+        "title": "Q&A",
+        "category": "Q&A",
+        "labels": ["aristobyte-starters", "help wanted", "question", "q&a"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/0f88cbcc-c7de-41c7-8a9c-ccc2c7e3a83d)\n# 💬 Q&A\nGot a problem? Stuck on a feature? Confused by our internal tooling?\n\nAsk here. This Q&A thread is monitored by our team and community members.\n✅ Mark helpful replies as answers\n💡 Share knowledge and help others learn"
+      },
+      {
+        "title": "Important",
+        "category": "Important",
+        "labels": ["aristobyte-dev", "important"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/947152d5-ce60-4211-bb24-b70b02fc645d)\n# 🚨 Important Threads Only\n\nCritical conversations live here.\nExamples include:\n- Security vulnerabilities\n- Urgent team-wide coordination\n- Major downtime alerts\n\nThis is not a general-purpose thread. Posts here should reflect urgent or high-priority needs."
+      },
+      {
+        "title": "Dev Chat",
+        "category": "Dev Chat",
+        "labels": ["aristobyte-dev"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/0397fec1-bc35-4733-80db-cc6b10666a18)\n# 🧪 AristoByte Dev Chat: Collaborate, Build, Iterate\nA place for engineers to talk shop — APIs, bugs, branches, architecture ideas, and hotfixes.\n\nFeel free to:\n- Share WIP ideas\n- Ask for quick peer reviews\n- Coordinate feature rollouts\n\nPlease keep issues/PRs out of this thread — open those separately when appropriate."
+      },
+      {
+        "title": "General",
+        "category": "General",
+        "labels": ["aristobyte-starters", "aristobyte-dev", "no-team"],
+        "body": "![logo-black-landscape](https://github.com/user-attachments/assets/e5fe8d28-f440-4f51-a422-cf35c3f1d875)\n# 💬 General Discussion: Open Channel\n\nUse this space to connect with the community around anything and everything.\n🎯 Got feedback?\n😄 Want to share a win?\n🧠 Thinking about a new side project?\n\nThis is the right place for it. Just keep it respectful, constructive, and aligned with AristoByte’s values."
+      }
+    ]
+  }
+}

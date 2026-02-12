@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "org": "aristobyte",
+  "teams": [
+    {
+      "slug": "aristobyte-starter",
+      "title": "aristobyte-starter",
+      "description": "Creating and maintaining production-ready starter kits, boilerplates, and base architectures for rapid product development.",
+      "image": "./assets/starter.png",
+      "roles": ["all-read"],
+      "visible": true,
+      "notification": "enabled",
+      "access": "all-repos"
+    },
+    {
+      "slug": "aristobyte-devs",
+      "title": "aristobyte-devs",
+      "description": "Engineering AristoByte’s full-stack platforms, reusable UI systems, and cloud-native applications.",
+      "image": "./assets/devs.png",
+      "roles": ["all-read", "all-write", "all-triage"],
+      "visible": true,
+      "notification": "enabled",
+      "access": "all-repos"
+    },
+    {
+      "slug": "aristobyte-approvers",
+      "title": "aristobyte-approvers",
+      "description": "Reviewing PRs",
+      "image": "./assets/approvers.png",
+      "roles": ["all-read", "all-write", "all-triage", "all-maintain"],
+      "visible": true,
+      "notification": "enabled",
+      "access": "all-repos"
+    },
+    {
+      "slug": "aristo-bypass",
+      "title": "aristo-bypass",
+      "description": "OP Bypass",
+      "image": "./assets/bypass.png",
+      "roles": ["all-read", "all-triage", "all-write", "all-maintain", "all-admin", "all-pull", "all-push", "all-none"],
+      "visible": true,
+      "notification": "enabled",
+      "access": "all-repos"
+    }
+  ]
+}

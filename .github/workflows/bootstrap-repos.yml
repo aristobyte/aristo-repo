@@ -1,0 +1,62 @@
+name: Bootstrap Repos Policy
+
+on:
+  workflow_dispatch:
+    inputs:
+      orgs:
+        description: "Space-separated orgs (default: aristobyte aristobyte-ui)"
+        required: false
+        default: "aristobyte aristobyte-ui"
+      dry_run:
+        description: "Dry run only"
+        type: boolean
+        required: true
+        default: true
+      include_private:
+        description: "Include private repos"
+        type: boolean
+        required: true
+        default: false
+      max_repos:
+        description: "Max repos per org (blank = all)"
+        required: false
+        default: ""
+
+jobs:
+  apply-policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      administration: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Ensure scripts executable
+        run: chmod +x scripts/*.sh
+
+      - name: Apply org policy
+        env:
+          GH_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "Missing required secret: GH_ADMIN_TOKEN"
+            exit 1
+          fi
+
+          args=()
+          if [ "${{ inputs.include_private }}" = "true" ]; then
+            args+=(--allow-private)
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          if [ -n "${{ inputs.max_repos }}" ]; then
+            args+=(--max-repos "${{ inputs.max_repos }}")
+          fi
+
+          # shellcheck disable=SC2086
+          bash scripts/apply_org_policy.sh ${args[@]} ${{ inputs.orgs }}

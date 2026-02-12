@@ -1,0 +1,41 @@
+node_modules/
+dist/
+
+# Package manager / build caches
+.npm/
+.yarn/
+.pnpm-store/
+.parcel-cache/
+.turbo/
+coverage/
+
+# Runtime logs
+*.log
+logs/
+*.out
+*.err
+
+# Temp and OS/editor outputs
+tmp/
+temp/
+*.tmp
+*.pid
+*.trace
+.DS_Store
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Local tarballs
+*.tgz
+
+# Script-generated local artifacts
+out/
+output/
+outputs/
+reports/
+artifacts/
+.artifacts/
+.cache/

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "execution": {
+    "dry_run": true,
+    "allow_private": false,
+    "max_repos_per_org": 0
+  },
+  "policy": {
+    "policy_dir": "./policy",
+    "ruleset_files": [
+      "core-branches-ruleset.json",
+      "release-branches-ruleset.json",
+      "tag-protection-ruleset.json"
+    ],
+    "ruleset_file": "core-branches-ruleset.json",
+    "ruleset_name": ""
+  },
+  "operations": {
+    "create_repos": [
+      {
+        "org": "aristobyte",
+        "name": "test",
+        "visibility": "public",
+        "description": "Policy bootstrap test repository",
+        "template": "",
+        "apply_policy": true
+      }
+    ],
+    "apply_org_policy": {
+      "enabled": false,
+      "orgs": [
+        "aristobyte"
+      ]
+    }
+  }
+}

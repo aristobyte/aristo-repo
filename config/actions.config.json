@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "org": "aristobyte",
+  "execution": {
+    "include_private": true,
+    "include_archived": false
+  },
+  "policy": {
+    "enabled": true,
+    "allowed_actions_mode": "selected",
+    "allow_github_owned": true,
+    "allow_verified_creators": false,
+    "patterns_allowed": [
+      "{ORG}/*"
+    ]
+  }
+}

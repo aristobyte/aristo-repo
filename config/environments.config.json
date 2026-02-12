@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "org": "aristobyte",
+  "execution": {
+    "include_private": true,
+    "include_archived": false
+  },
+  "environments": [
+    {
+      "name": "nonprod",
+      "wait_timer": 0,
+      "prevent_self_review": false,
+      "reviewers": []
+    },
+    {
+      "name": "production",
+      "wait_timer": 0,
+      "prevent_self_review": false,
+      "reviewers": []
+    }
+  ]
+}
