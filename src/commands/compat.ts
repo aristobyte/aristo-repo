@@ -29,8 +29,6 @@ import {
 } from "../app.js";
 import { hasFlag, parseFlagValue, parseIntFlag, parseOrgList } from "../utils/flags.js";
 
-type LogMode = "plain" | "color";
-
 type OrgConfig = {
   org?: string;
   execution?: {
@@ -39,7 +37,7 @@ type OrgConfig = {
   };
 };
 
-export async function runCompatScript(scriptInput: string, args: string[], mode: LogMode): Promise<void> {
+export async function runCompatScript(scriptInput: string, args: string[]): Promise<void> {
   const script = scriptInput.replace(/^\.\//, "");
   const normalized = script.startsWith("src/") ? script.slice(4) : script;
 
@@ -51,7 +49,7 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
       if (!org || !repo) {
         throw new Error("Usage: create_repo <org> <repo>");
       }
-      await runCreateFlow(org, repo, mode);
+      await runCreateFlow(org, repo);
       return;
     }
 
@@ -61,7 +59,7 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
       if (!org) {
         throw new Error("Usage: apply_org_config <org>");
       }
-      await runApplyOrgFlow(org, mode);
+      await runApplyOrgFlow(org);
       return;
     }
 
@@ -71,7 +69,7 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
       if (!org) {
         throw new Error("Usage: init_org_teams <org>");
       }
-      await runInitTeamsFlow(org, mode);
+      await runInitTeamsFlow(org);
       return;
     }
 
@@ -81,7 +79,7 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
       if (!org) {
         throw new Error("Usage: remove_org_teams <org>");
       }
-      await runRemoveTeamsFlow(org, mode);
+      await runRemoveTeamsFlow(org);
       return;
     }
 
@@ -119,13 +117,20 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
 
     case "scripts/update_actions_policy_repo.sh":
     case "scripts/update_actions_policy_repo.ts": {
-      applyActionsRepo(parseFlagValue(args, "--repo"), resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/actions.config.json")), hasFlag(args, "--dry-run"));
+      applyActionsRepo(
+        parseFlagValue(args, "--repo"),
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/actions.config.json")),
+        hasFlag(args, "--dry-run")
+      );
       return;
     }
 
     case "scripts/update_actions_policy_org.sh":
     case "scripts/update_actions_policy_org.ts": {
-      const configFile = resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/actions.config.json"));
+      const configFile = resolvePathFromRoot(
+        REPO_ROOT,
+        parseFlagValue(args, "--config", "./config/actions.config.json")
+      );
       const config = loadJsonFile<OrgConfig>(configFile);
       const org = parseFlagValue(args, "--org", config.org ?? "");
       if (!org) {
@@ -142,13 +147,20 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
 
     case "scripts/update_security_policy_repo.sh":
     case "scripts/update_security_policy_repo.ts": {
-      applySecurityRepo(parseFlagValue(args, "--repo"), resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/security.config.json")), hasFlag(args, "--dry-run"));
+      applySecurityRepo(
+        parseFlagValue(args, "--repo"),
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/security.config.json")),
+        hasFlag(args, "--dry-run")
+      );
       return;
     }
 
     case "scripts/update_security_policy_org.sh":
     case "scripts/update_security_policy_org.ts": {
-      const configFile = resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/security.config.json"));
+      const configFile = resolvePathFromRoot(
+        REPO_ROOT,
+        parseFlagValue(args, "--config", "./config/security.config.json")
+      );
       const config = loadJsonFile<OrgConfig>(configFile);
       const org = parseFlagValue(args, "--org", config.org ?? "");
       if (!org) {
@@ -165,13 +177,20 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
 
     case "scripts/update_environments_repo.sh":
     case "scripts/update_environments_repo.ts": {
-      applyEnvironmentsRepo(parseFlagValue(args, "--repo"), resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/environments.config.json")), hasFlag(args, "--dry-run"));
+      applyEnvironmentsRepo(
+        parseFlagValue(args, "--repo"),
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/environments.config.json")),
+        hasFlag(args, "--dry-run")
+      );
       return;
     }
 
     case "scripts/update_environments_org.sh":
     case "scripts/update_environments_org.ts": {
-      const configFile = resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/environments.config.json"));
+      const configFile = resolvePathFromRoot(
+        REPO_ROOT,
+        parseFlagValue(args, "--config", "./config/environments.config.json")
+      );
       const config = loadJsonFile<OrgConfig>(configFile);
       const org = parseFlagValue(args, "--org", config.org ?? "");
       if (!org) {
@@ -188,19 +207,27 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
 
     case "scripts/init_discussions_repo.sh":
     case "scripts/init_discussions_repo.ts": {
-      ensureDiscussionsRepo(parseFlagValue(args, "--repo"), resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")), hasFlag(args, "--dry-run"));
+      ensureDiscussionsRepo(
+        parseFlagValue(args, "--repo"),
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")),
+        hasFlag(args, "--dry-run")
+      );
       return;
     }
 
     case "scripts/init_discussions_org.sh":
     case "scripts/init_discussions_org.ts": {
       const org = parseFlagValue(args, "--org");
-      ensureDiscussionsOrg(org, resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")), {
-        dryRun: hasFlag(args, "--dry-run"),
-        allowPrivate: hasFlag(args, "--allow-private"),
-        includeArchived: hasFlag(args, "--include-archived"),
-        maxRepos: parseIntFlag(args, "--max-repos", 0)
-      });
+      ensureDiscussionsOrg(
+        org,
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")),
+        {
+          dryRun: hasFlag(args, "--dry-run"),
+          allowPrivate: hasFlag(args, "--allow-private"),
+          includeArchived: hasFlag(args, "--include-archived"),
+          maxRepos: parseIntFlag(args, "--max-repos", 0)
+        }
+      );
       return;
     }
 
@@ -223,7 +250,11 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
     case "scripts/remove_teams_org.sh":
     case "scripts/remove_teams_org.ts": {
       const org = parseFlagValue(args, "--org");
-      removeTeams(org, resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/teams.config.json")), hasFlag(args, "--dry-run"));
+      removeTeams(
+        org,
+        resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/teams.config.json")),
+        hasFlag(args, "--dry-run")
+      );
       return;
     }
 
@@ -298,7 +329,11 @@ export async function runCompatScript(scriptInput: string, args: string[], mode:
     case "scripts/gh_manage.ts":
     case "manage.sh":
     case "manage.ts": {
-      const command = (args.find((a) => ["validate", "plan", "run"].includes(a)) ?? "") as "validate" | "plan" | "run" | "";
+      const command = (args.find((a) => ["validate", "plan", "run"].includes(a)) ?? "") as
+        | "validate"
+        | "plan"
+        | "run"
+        | "";
       if (!command) {
         throw new Error("Usage: gh_manage <validate|plan|run> [--config FILE]");
       }

@@ -6,76 +6,62 @@ cd "$ROOT_DIR"
 CACHE_DIR="${NPM_CACHE_DIR:-$ROOT_DIR/.npm-cache}"
 mkdir -p "$CACHE_DIR"
 
-usage() {
-  cat <<'USAGE'
-Usage:
-  bash scripts/publish.sh [--dry-run] [--tag TAG] [--otp CODE] [--access public|restricted]
-
-Examples:
-  bash scripts/publish.sh --dry-run
-  bash scripts/publish.sh --tag next
-  bash scripts/publish.sh --otp 123456
-USAGE
-}
-
 DRY_RUN=0
-TAG=""
-OTP=""
-ACCESS="public"
+SCOPE="${SCOPE:-NPM}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)
       DRY_RUN=1
       ;;
-    --tag)
-      shift
-      [[ $# -gt 0 ]] || { echo "--tag requires a value" >&2; exit 1; }
-      TAG="$1"
-      ;;
-    --otp)
-      shift
-      [[ $# -gt 0 ]] || { echo "--otp requires a value" >&2; exit 1; }
-      OTP="$1"
-      ;;
-    --access)
-      shift
-      [[ $# -gt 0 ]] || { echo "--access requires a value" >&2; exit 1; }
-      ACCESS="$1"
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
     *)
       echo "Unknown option: $1" >&2
-      usage
       exit 1
       ;;
   esac
   shift
 done
 
-case "$ACCESS" in
-  public|restricted)
+case "$SCOPE" in
+  NPM|GITHUB_PACKAGES)
     ;;
   *)
-    echo "Invalid --access value: $ACCESS" >&2
+    echo "Invalid SCOPE: $SCOPE (expected NPM or GITHUB_PACKAGES)" >&2
     exit 1
     ;;
 esac
 
 bash "$ROOT_DIR/scripts/build.sh"
 
-cmd=(npm --cache "$CACHE_DIR" publish --access "$ACCESS")
-[[ -n "$TAG" ]] && cmd+=(--tag "$TAG")
-[[ -n "$OTP" ]] && cmd+=(--otp "$OTP")
-[[ "$DRY_RUN" -eq 1 ]] && cmd+=(--dry-run)
+name="$(node -p "require('./package.json').name")"
+private="$(node -p "require('./package.json').private===true ? 'true' : 'false'")"
+dirname="$(basename "$ROOT_DIR")"
 
-printf 'Running: '
-printf '%q ' "${cmd[@]}"
-echo
+if [[ "$private" == "true" ]]; then
+  echo "Skipping private package: $dirname"
+  exit 0
+fi
 
-"${cmd[@]}"
+if [[ "$SCOPE" == "GITHUB_PACKAGES" ]]; then
+  cmd=(npm --cache "$CACHE_DIR" publish --access public --registry https://npm.pkg.github.com/)
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    cmd+=(--dry-run)
+  fi
+  if [[ -n "${NODE_AUTH_TOKEN:-}" ]]; then
+    cmd+=(--//npm.pkg.github.com/:_authToken="${NODE_AUTH_TOKEN}")
+  elif [[ "$DRY_RUN" -ne 1 ]]; then
+    echo "NODE_AUTH_TOKEN is required for GITHUB_PACKAGES publish" >&2
+    exit 1
+  fi
+  echo "Publishing $name to GitHub Packages"
+  "${cmd[@]}"
+fi
 
-echo "Publish completed."
+if [[ "$SCOPE" == "NPM" ]]; then
+  cmd=(npm --cache "$CACHE_DIR" publish --access public --registry https://registry.npmjs.org/)
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    cmd+=(--dry-run)
+  fi
+  echo "Publishing $name to NPM registry"
+  "${cmd[@]}"
+fi

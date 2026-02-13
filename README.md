@@ -38,6 +38,14 @@ One-step publish flow:
 npm run release
 ```
 
+Local dry-run flow:
+
+```bash
+npm run bump:dry-run
+npm run publish:stable:dry-run
+npm run release:dry-run
+```
+
 Shell scripts (under `./scripts/`):
 
 ```bash

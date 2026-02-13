@@ -4,32 +4,33 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-usage() {
-  cat <<'USAGE'
-Usage:
-  bash scripts/bump.sh [patch|minor|major|prepatch|preminor|premajor|prerelease] [--dry-run]
+VALID_TYPES=(patch minor major prepatch preminor premajor prerelease)
 
-Examples:
-  bash scripts/bump.sh patch
-  bash scripts/bump.sh minor
-  bash scripts/bump.sh prerelease
-  bash scripts/bump.sh patch --dry-run
-USAGE
+is_valid_type() {
+  local val="$1"
+  for t in "${VALID_TYPES[@]}"; do
+    [[ "$t" == "$val" ]] && return 0
+  done
+  return 1
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  usage
-  exit 0
-fi
+auto_detect_bump_type() {
+  local last_commit_msg
+  last_commit_msg="$(git log -1 --pretty=%s 2>/dev/null || true)"
 
-BUMP_TYPE="${1:-patch}"
+  case "$last_commit_msg" in
+    feat*|feature*) echo "minor" ;;
+    ref*|refactor*) echo "major" ;;
+    fix*|chore*|docs*) echo "patch" ;;
+    *) echo "patch" ;;
+  esac
+}
+
+BUMP_TYPE=""
 DRY_RUN=0
 
-if [[ "$BUMP_TYPE" == "--dry-run" ]]; then
-  BUMP_TYPE="patch"
-  DRY_RUN=1
-  shift || true
-elif [[ $# -gt 0 ]]; then
+if [[ $# -gt 0 && ! "${1:-}" =~ ^-- ]]; then
+  BUMP_TYPE="$1"
   shift
 fi
 
@@ -40,28 +41,24 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1" >&2
-      usage
       exit 1
       ;;
   esac
   shift
 done
 
-case "$BUMP_TYPE" in
-  patch|minor|major|prepatch|preminor|premajor|prerelease)
-    ;;
-  *)
-    echo "Unsupported bump type: $BUMP_TYPE" >&2
-    usage
-    exit 1
-    ;;
-esac
+if [[ -z "$BUMP_TYPE" ]]; then
+  BUMP_TYPE="$(auto_detect_bump_type)"
+fi
+
+if ! is_valid_type "$BUMP_TYPE"; then
+  echo "Unsupported bump type: $BUMP_TYPE" >&2
+  exit 1
+fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "[dry-run] npm version $BUMP_TYPE --no-git-tag-version"
+  echo "npm version $BUMP_TYPE --no-git-tag-version"
   exit 0
 fi
 
 npm version "$BUMP_TYPE" --no-git-tag-version
-
-echo "Version bumped using '$BUMP_TYPE'."

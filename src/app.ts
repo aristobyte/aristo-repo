@@ -6,8 +6,6 @@ import path from "node:path";
 const THIS_FILE = fileURLToPath(import.meta.url);
 export const REPO_ROOT = path.resolve(path.dirname(THIS_FILE), "..");
 
-type LogMode = "plain" | "color";
-
 type RepoInfo = {
   name: string;
   visibility: string;
@@ -23,7 +21,13 @@ type AppConfig = {
     max_repos?: number;
   };
   modules?: {
-    repo_create?: { enabled?: boolean; visibility?: "public" | "private"; description?: string; template?: string; apply_repo_policy?: boolean };
+    repo_create?: {
+      enabled?: boolean;
+      visibility?: "public" | "private";
+      description?: string;
+      template?: string;
+      apply_repo_policy?: boolean;
+    };
     rulesets?: { enabled?: boolean; config?: string };
     discussions?: { enabled?: boolean; config?: string };
     actions?: { enabled?: boolean; config?: string };
@@ -131,7 +135,9 @@ function parseJson<T>(raw: string, source: string): T {
   try {
     return JSON.parse(raw) as T;
   } catch (error) {
-    throw new Error(`Invalid JSON in ${source}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Invalid JSON in ${source}: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error
+    });
   }
 }
 
@@ -273,11 +279,18 @@ function notificationFromFlag(value: string): "notifications_enabled" | "notific
   return ["disabled", "disable", "off", "false"].includes(value) ? "notifications_disabled" : "notifications_enabled";
 }
 
-function loadPolicyConfig(configFile: string): { rulesets: Array<Record<string, unknown>>; rulesetName: string; repoSettings: Record<string, unknown> } {
+function loadPolicyConfig(configFile: string): {
+  rulesets: Array<Record<string, unknown>>;
+  rulesetName: string;
+  repoSettings: Record<string, unknown>;
+} {
   const config = loadJsonFile<ManagementConfig>(configFile);
   ensureVersion(configFile, config);
 
-  const repoSettingsCfgPath = resolvePathFromRoot(REPO_ROOT, config.policy?.repo_settings_config ?? "./config/repo-settings.config.json");
+  const repoSettingsCfgPath = resolvePathFromRoot(
+    REPO_ROOT,
+    config.policy?.repo_settings_config ?? "./config/repo-settings.config.json"
+  );
   if (!fs.existsSync(repoSettingsCfgPath)) {
     throw new Error(`Missing file: ${repoSettingsCfgPath}`);
   }
@@ -287,7 +300,10 @@ function loadPolicyConfig(configFile: string): { rulesets: Array<Record<string, 
     throw new Error(`Invalid settings in ${repoSettingsCfgPath}`);
   }
 
-  const rulesetsCfgPath = resolvePathFromRoot(REPO_ROOT, config.policy?.rulesets_config ?? "./config/rulesets.config.json");
+  const rulesetsCfgPath = resolvePathFromRoot(
+    REPO_ROOT,
+    config.policy?.rulesets_config ?? "./config/rulesets.config.json"
+  );
   if (!fs.existsSync(rulesetsCfgPath)) {
     throw new Error(`Missing file: ${rulesetsCfgPath}`);
   }
@@ -297,10 +313,19 @@ function loadPolicyConfig(configFile: string): { rulesets: Array<Record<string, 
     throw new Error(`Invalid or empty rulesets in ${rulesetsCfgPath}`);
   }
 
-  return { rulesets: rulesetsCfg.rulesets, rulesetName: config.policy?.ruleset_name ?? "", repoSettings: repoSettingsCfg.settings };
+  return {
+    rulesets: rulesetsCfg.rulesets,
+    rulesetName: config.policy?.ruleset_name ?? "",
+    repoSettings: repoSettingsCfg.settings
+  };
 }
 
-function resolveRulesetTemplate(rawTemplate: string, org: string, bypassTeamSlug: string, reviewerTeamSlug: string): string {
+function resolveRulesetTemplate(
+  rawTemplate: string,
+  org: string,
+  bypassTeamSlug: string,
+  reviewerTeamSlug: string
+): string {
   let raw = rawTemplate;
   if (raw.includes("__BYPASS_TEAM_ID__")) {
     const bypassId = Number(runGh(["api", `orgs/${org}/teams/${bypassTeamSlug}`, "--jq", ".id"]));
@@ -313,7 +338,11 @@ function resolveRulesetTemplate(rawTemplate: string, org: string, bypassTeamSlug
   return raw;
 }
 
-function upsertRuleset(repoFull: string, ruleset: Record<string, unknown>, opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; forceRulesetName?: string }): void {
+function upsertRuleset(
+  repoFull: string,
+  ruleset: Record<string, unknown>,
+  opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; forceRulesetName?: string }
+): void {
   const { org, repo } = parseRepoFull(repoFull);
   const rawTemplate = JSON.stringify(ruleset);
   const resolved = resolveRulesetTemplate(rawTemplate, org, opts.bypassTeamSlug, opts.reviewerTeamSlug);
@@ -352,7 +381,11 @@ function upsertRuleset(repoFull: string, ruleset: Record<string, unknown>, opts:
   }
 }
 
-export function applyRulesetsRepo(repoFull: string, configFile: string, opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; rulesetName?: string }): void {
+export function applyRulesetsRepo(
+  repoFull: string,
+  configFile: string,
+  opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; rulesetName?: string }
+): void {
   const { rulesets } = loadPolicyConfig(configFile);
   for (const ruleset of rulesets) {
     upsertRuleset(repoFull, ruleset, {
@@ -364,7 +397,11 @@ export function applyRulesetsRepo(repoFull: string, configFile: string, opts: { 
   }
 }
 
-export function applyRulesetsOrg(org: string, configFile: string, opts: { dryRun: boolean; allowPrivate: boolean; maxRepos: number; bypassTeamSlug: string; reviewerTeamSlug: string }): void {
+export function applyRulesetsOrg(
+  org: string,
+  configFile: string,
+  opts: { dryRun: boolean; allowPrivate: boolean; maxRepos: number; bypassTeamSlug: string; reviewerTeamSlug: string }
+): void {
   const { rulesets } = loadPolicyConfig(configFile);
   const repos = listRepos(org);
 
@@ -410,7 +447,9 @@ export function applyRulesetsOrg(org: string, configFile: string, opts: { dryRun
     }
   }
 
-  console.log(`Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`);
+  console.log(
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+  );
   if (failed > 0) {
     throw new Error("Rulesets org apply finished with failures");
   }
@@ -426,15 +465,18 @@ function patchRepoSettings(repoFull: string, repoSettings: Record<string, unknow
   runGh(["api", "-X", "PATCH", `repos/${org}/${repo}`, "--input", "-"], { input: payload });
 }
 
-export function applyOneRepoPolicy(repoFull: string, opts: {
-  configFile: string;
-  allowPrivate: boolean;
-  repoVisibility?: string;
-  repoArchived?: string;
-  dryRun: boolean;
-  bypassTeamSlug: string;
-  reviewerTeamSlug: string;
-}): void {
+export function applyOneRepoPolicy(
+  repoFull: string,
+  opts: {
+    configFile: string;
+    allowPrivate: boolean;
+    repoVisibility?: string;
+    repoArchived?: string;
+    dryRun: boolean;
+    bypassTeamSlug: string;
+    reviewerTeamSlug: string;
+  }
+): void {
   const { org, repo } = parseRepoFull(repoFull);
   const { repoSettings, rulesets, rulesetName } = loadPolicyConfig(opts.configFile);
 
@@ -472,15 +514,19 @@ export function applyOneRepoPolicy(repoFull: string, opts: {
   console.log(`Applied: settings patched, rulesets applied=${applied}`);
 }
 
-export function createRepoCore(org: string, repo: string, opts: {
-  visibility: "public" | "private";
-  description: string;
-  template: string;
-  applyPolicy: boolean;
-  allowPrivatePolicy: boolean;
-  dryRun: boolean;
-  configFile: string;
-}): void {
+export function createRepoCore(
+  org: string,
+  repo: string,
+  opts: {
+    visibility: "public" | "private";
+    description: string;
+    template: string;
+    applyPolicy: boolean;
+    allowPrivatePolicy: boolean;
+    dryRun: boolean;
+    configFile: string;
+  }
+): void {
   const repoFull = `${org}/${repo}`;
 
   if (opts.dryRun) {
@@ -534,7 +580,10 @@ export function createRepoCore(org: string, repo: string, opts: {
   });
 }
 
-export function applyOrgPolicy(orgs: string[], opts: { allowPrivate: boolean; dryRun: boolean; maxRepos: number; configFile: string }): void {
+export function applyOrgPolicy(
+  orgs: string[],
+  opts: { allowPrivate: boolean; dryRun: boolean; maxRepos: number; configFile: string }
+): void {
   let totalSeen = 0;
   let totalApplied = 0;
   let totalSkipped = 0;
@@ -616,7 +665,9 @@ export function applyActionsRepo(repoFull: string, configFile: string, dryRun: b
   if (dryRun) {
     console.log(`[dry-run] set actions policy on ${repoFull}: mode=${mode}`);
     if (mode === "selected") {
-      console.log(`[dry-run] selected-actions github_owned_allowed=${toBool(config.policy?.allow_github_owned, true)} verified_allowed=${toBool(config.policy?.allow_verified_creators, false)}`);
+      console.log(
+        `[dry-run] selected-actions github_owned_allowed=${toBool(config.policy?.allow_github_owned, true)} verified_allowed=${toBool(config.policy?.allow_verified_creators, false)}`
+      );
       for (const pattern of patterns) {
         console.log(`[dry-run]   pattern: ${pattern}`);
       }
@@ -642,7 +693,11 @@ export function applyActionsRepo(repoFull: string, configFile: string, dryRun: b
   console.log(`updated actions policy: ${repoFull}`);
 }
 
-export function applyActionsOrg(org: string, configFile: string, opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }): void {
+export function applyActionsOrg(
+  org: string,
+  configFile: string,
+  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+): void {
   const repos = listRepos(org);
   let seen = 0;
   let applied = 0;
@@ -671,11 +726,15 @@ export function applyActionsOrg(org: string, configFile: string, opts: { dryRun:
       applied += 1;
     } catch (error) {
       failed += 1;
-      console.error(`[error] actions failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `[error] actions failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  console.log(`Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`);
+  console.log(
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+  );
   if (failed > 0) {
     throw new Error("Actions org apply finished with failures");
   }
@@ -695,9 +754,16 @@ export function applySecurityRepo(repoFull: string, configFile: string, dryRun: 
   const automatedSecurityFixes = toBool(config.policy?.automated_security_fixes, true);
   const privateVulnReporting = toBool(config.policy?.private_vulnerability_reporting, true);
 
-  runGh(["api", "-X", vulnerabilityAlerts ? "PUT" : "DELETE", `repos/${org}/${repo}/vulnerability-alerts`], { allowError: true });
-  runGh(["api", "-X", automatedSecurityFixes ? "PUT" : "DELETE", `repos/${org}/${repo}/automated-security-fixes`], { allowError: true });
-  runGh(["api", "-X", privateVulnReporting ? "PUT" : "DELETE", `repos/${org}/${repo}/private-vulnerability-reporting`], { allowError: true });
+  runGh(["api", "-X", vulnerabilityAlerts ? "PUT" : "DELETE", `repos/${org}/${repo}/vulnerability-alerts`], {
+    allowError: true
+  });
+  runGh(["api", "-X", automatedSecurityFixes ? "PUT" : "DELETE", `repos/${org}/${repo}/automated-security-fixes`], {
+    allowError: true
+  });
+  runGh(
+    ["api", "-X", privateVulnReporting ? "PUT" : "DELETE", `repos/${org}/${repo}/private-vulnerability-reporting`],
+    { allowError: true }
+  );
 
   for (const [key, status] of Object.entries(config.policy?.security_and_analysis ?? {})) {
     if (status !== "enabled" && status !== "disabled") {
@@ -717,7 +783,11 @@ export function applySecurityRepo(repoFull: string, configFile: string, dryRun: 
   console.log(`updated security policy: ${repoFull}`);
 }
 
-export function applySecurityOrg(org: string, configFile: string, opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }): void {
+export function applySecurityOrg(
+  org: string,
+  configFile: string,
+  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+): void {
   const repos = listRepos(org);
   let seen = 0;
   let applied = 0;
@@ -745,11 +815,15 @@ export function applySecurityOrg(org: string, configFile: string, opts: { dryRun
       applied += 1;
     } catch (error) {
       failed += 1;
-      console.error(`[error] security failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `[error] security failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  console.log(`Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`);
+  console.log(
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+  );
   if (failed > 0) {
     throw new Error("Security org apply finished with failures");
   }
@@ -768,7 +842,9 @@ export function applyEnvironmentsRepo(repoFull: string, configFile: string, dryR
     const preventSelfReview = toBool(envCfg.prevent_self_review, false);
 
     if (dryRun) {
-      console.log(`[dry-run] upsert env '${envCfg.name}' on ${repoFull} (wait_timer=${waitTimer} prevent_self_review=${preventSelfReview})`);
+      console.log(
+        `[dry-run] upsert env '${envCfg.name}' on ${repoFull} (wait_timer=${waitTimer} prevent_self_review=${preventSelfReview})`
+      );
       continue;
     }
 
@@ -779,7 +855,11 @@ export function applyEnvironmentsRepo(repoFull: string, configFile: string, dryR
   }
 }
 
-export function applyEnvironmentsOrg(org: string, configFile: string, opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }): void {
+export function applyEnvironmentsOrg(
+  org: string,
+  configFile: string,
+  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+): void {
   const repos = listRepos(org);
   let seen = 0;
   let applied = 0;
@@ -807,11 +887,15 @@ export function applyEnvironmentsOrg(org: string, configFile: string, opts: { dr
       applied += 1;
     } catch (error) {
       failed += 1;
-      console.error(`[error] environments failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `[error] environments failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  console.log(`Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`);
+  console.log(
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+  );
   if (failed > 0) {
     throw new Error("Environments org apply finished with failures");
   }
@@ -822,7 +906,7 @@ function labelIdByName(org: string, repo: string, labelName: string): string {
     "api",
     "graphql",
     "-f",
-    'query=query($owner:String!,$name:String!,$label:String!){repository(owner:$owner,name:$name){labels(first:100,query:$label){nodes{id name}}}}',
+    "query=query($owner:String!,$name:String!,$label:String!){repository(owner:$owner,name:$name){labels(first:100,query:$label){nodes{id name}}}}",
     "-F",
     `owner=${org}`,
     "-F",
@@ -830,12 +914,20 @@ function labelIdByName(org: string, repo: string, labelName: string): string {
     "-F",
     `label=${labelName}`
   ]);
-  const parsed = parseJson<{ data?: { repository?: { labels?: { nodes?: Array<{ id: string; name: string }> } } } }>(out, "label query");
+  const parsed = parseJson<{ data?: { repository?: { labels?: { nodes?: Array<{ id: string; name: string }> } } } }>(
+    out,
+    "label query"
+  );
   const found = parsed.data?.repository?.labels?.nodes?.find((n) => n.name === labelName);
   return found?.id ?? "";
 }
 
-function ensureLabel(org: string, repo: string, label: { name: string; color?: string; description?: string }, dryRun: boolean): void {
+function ensureLabel(
+  org: string,
+  repo: string,
+  label: { name: string; color?: string; description?: string },
+  dryRun: boolean
+): void {
   if (labelIdByName(org, repo, label.name)) {
     console.log(`label exists: ${label.name}`);
     return;
@@ -873,7 +965,12 @@ function categoryIdByName(org: string, repo: string, categoryName: string): stri
   return found ? String(found.id) : "";
 }
 
-function ensureCategory(org: string, repo: string, category: { name: string; description?: string; emoji?: string; is_answerable?: boolean }, dryRun: boolean): void {
+function ensureCategory(
+  org: string,
+  repo: string,
+  category: { name: string; description?: string; emoji?: string; is_answerable?: boolean },
+  dryRun: boolean
+): void {
   if (categoryIdByName(org, repo, category.name)) {
     console.log(`category exists: ${category.name}`);
     return;
@@ -909,7 +1006,12 @@ function discussionIdByTitle(org: string, repo: string, title: string): string {
   return found?.node_id ?? "";
 }
 
-function createDiscussion(org: string, repo: string, payload: { title: string; body: string; category: string }, dryRun: boolean): string {
+function createDiscussion(
+  org: string,
+  repo: string,
+  payload: { title: string; body: string; category: string },
+  dryRun: boolean
+): string {
   const existing = discussionIdByTitle(org, repo, payload.title);
   if (existing) {
     console.log(`discussion exists: ${payload.title}`);
@@ -956,7 +1058,7 @@ function addLabelsToDiscussion(discussionId: string, labelIds: string[], dryRun:
     "api",
     "graphql",
     "-f",
-    'query=mutation($labelableId:ID!,$labelIds:[ID!]!){addLabelsToLabelable(input:{labelableId:$labelableId,labelIds:$labelIds}){clientMutationId}}',
+    "query=mutation($labelableId:ID!,$labelIds:[ID!]!){addLabelsToLabelable(input:{labelableId:$labelableId,labelIds:$labelIds}){clientMutationId}}",
     "-F",
     `labelableId=${discussionId}`,
     "-F",
@@ -973,13 +1075,16 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
     "api",
     "graphql",
     "-f",
-    'query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){id hasDiscussionsEnabled}}',
+    "query=query($owner:String!,$name:String!){repository(owner:$owner,name:$name){id hasDiscussionsEnabled}}",
     "-F",
     `owner=${org}`,
     "-F",
     `name=${repo}`
   ]);
-  const repoMeta = parseJson<{ data?: { repository?: { hasDiscussionsEnabled?: boolean } } }>(repoMetaOut, "repo discussions metadata");
+  const repoMeta = parseJson<{ data?: { repository?: { hasDiscussionsEnabled?: boolean } } }>(
+    repoMetaOut,
+    "repo discussions metadata"
+  );
   const hasDiscussionsEnabled = repoMeta.data?.repository?.hasDiscussionsEnabled === true;
 
   if (!hasDiscussionsEnabled) {
@@ -1023,7 +1128,11 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
   console.log(`Done: discussions template initialized for ${repoFull}`);
 }
 
-export function ensureDiscussionsOrg(org: string, configFile: string, opts: { allowPrivate: boolean; includeArchived: boolean; maxRepos: number; dryRun: boolean }): void {
+export function ensureDiscussionsOrg(
+  org: string,
+  configFile: string,
+  opts: { allowPrivate: boolean; includeArchived: boolean; maxRepos: number; dryRun: boolean }
+): void {
   const repos = listRepos(org);
   let seen = 0;
   let applied = 0;
@@ -1051,17 +1160,31 @@ export function ensureDiscussionsOrg(org: string, configFile: string, opts: { al
       applied += 1;
     } catch (error) {
       failed += 1;
-      console.error(`[error] discussions failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `[error] discussions failed for ${org}/${repo.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
-  console.log(`Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`);
+  console.log(
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+  );
   if (failed > 0) {
     throw new Error("Discussions org apply finished with failures");
   }
 }
 
-function ensureTeam(org: string, team: { slug: string; title: string; description: string; privacy: "closed" | "secret"; notification: "notifications_enabled" | "notifications_disabled" }, dryRun: boolean): void {
+function ensureTeam(
+  org: string,
+  team: {
+    slug: string;
+    title: string;
+    description: string;
+    privacy: "closed" | "secret";
+    notification: "notifications_enabled" | "notifications_disabled";
+  },
+  dryRun: boolean
+): void {
   const exists = runGhResult(["api", `orgs/${org}/teams/${team.slug}`]).status === 0;
 
   if (exists) {
@@ -1111,16 +1234,33 @@ function ensureTeam(org: string, team: { slug: string; title: string; descriptio
   console.log(`created team: ${org}/${team.slug}`);
 }
 
-function grantRepoPermission(org: string, teamSlug: string, repoName: string, permission: string, dryRun: boolean): void {
+function grantRepoPermission(
+  org: string,
+  teamSlug: string,
+  repoName: string,
+  permission: string,
+  dryRun: boolean
+): void {
   if (dryRun) {
     console.log(`[dry-run] grant ${permission} on ${org}/${repoName} to team ${teamSlug}`);
     return;
   }
 
-  runGh(["api", "-X", "PUT", `orgs/${org}/teams/${teamSlug}/repos/${org}/${repoName}`, "-f", `permission=${permission}`]);
+  runGh([
+    "api",
+    "-X",
+    "PUT",
+    `orgs/${org}/teams/${teamSlug}/repos/${org}/${repoName}`,
+    "-f",
+    `permission=${permission}`
+  ]);
 }
 
-export function initTeams(org: string, configFile: string, opts: { dryRun: boolean; maxRepos: number; includeArchived: boolean }): void {
+export function initTeams(
+  org: string,
+  configFile: string,
+  opts: { dryRun: boolean; maxRepos: number; includeArchived: boolean }
+): void {
   const config = loadJsonFile<TeamsConfig>(configFile);
   ensureVersion(configFile, config);
 
@@ -1143,7 +1283,9 @@ export function initTeams(org: string, configFile: string, opts: { dryRun: boole
       } else {
         console.error(`   image asset missing: ${teamCfg.image}`);
       }
-      console.log("   note: GitHub team avatar upload is not available in gh REST flow; set avatar in UI after team creation.");
+      console.log(
+        "   note: GitHub team avatar upload is not available in gh REST flow; set avatar in UI after team creation."
+      );
     }
 
     ensureTeam(
@@ -1276,7 +1418,7 @@ function pickConfig(pathOrDefault: string | undefined, fallback: string): string
   return resolvePathFromRoot(REPO_ROOT, pathOrDefault ?? fallback);
 }
 
-export async function runCreateFlow(org: string, repo: string, _mode: LogMode): Promise<void> {
+export async function runCreateFlow(org: string, repo: string): Promise<void> {
   validateRequiredTools();
   checkGhAuth();
 
@@ -1364,7 +1506,7 @@ export async function runCreateFlow(org: string, repo: string, _mode: LogMode): 
   }
 }
 
-export async function runApplyOrgFlow(org: string, _mode: LogMode): Promise<void> {
+export async function runApplyOrgFlow(org: string): Promise<void> {
   validateRequiredTools();
   checkGhAuth();
 
@@ -1410,7 +1552,7 @@ export async function runApplyOrgFlow(org: string, _mode: LogMode): Promise<void
   }
 }
 
-export async function runInitTeamsFlow(org: string, _mode: LogMode): Promise<void> {
+export async function runInitTeamsFlow(org: string): Promise<void> {
   validateRequiredTools();
   checkGhAuth();
 
@@ -1431,7 +1573,7 @@ export async function runInitTeamsFlow(org: string, _mode: LogMode): Promise<voi
   initTeams(org, teamsCfg, { dryRun, includeArchived, maxRepos });
 }
 
-export async function runRemoveTeamsFlow(org: string, _mode: LogMode): Promise<void> {
+export async function runRemoveTeamsFlow(org: string): Promise<void> {
   validateRequiredTools();
   checkGhAuth();
 
@@ -1489,7 +1631,9 @@ export function runManage(command: "validate" | "plan" | "run", configFile: stri
     console.log("- none");
   } else {
     for (const item of createRepos) {
-      console.log(`- ${item.org}/${item.name} visibility=${item.visibility ?? "public"} apply_policy=${toBool(item.apply_policy, true)}`);
+      console.log(
+        `- ${item.org}/${item.name} visibility=${item.visibility ?? "public"} apply_policy=${toBool(item.apply_policy, true)}`
+      );
     }
   }
 

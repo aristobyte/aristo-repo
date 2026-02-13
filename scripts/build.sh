@@ -6,5 +6,3 @@ cd "$ROOT_DIR"
 
 npm run check
 npm run build
-
-echo "Build completed."

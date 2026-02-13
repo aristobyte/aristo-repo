@@ -1,1 +1,2 @@
-categories and section in discussion should be first deleted (all of them) later on we should creat the labals and later on only create the categories and as the last step to create the sections. After done we should init discussion from templates from config.
+- categories and section in discussion should be first deleted (all of them) later on we should creat the labals and later on only create the categories and as the last step to create the sections. After done we should init discussion from templates from config.
+- remove the current CI logic it should be executed from app level, not from github... instead a publish logic should be created

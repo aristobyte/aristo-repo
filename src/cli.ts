@@ -25,7 +25,7 @@ program
   .argument("<org>", "GitHub organization")
   .argument("<repo>", "repository name")
   .action(async (org: string, repo: string) => {
-    await runCreateFlow(org, repo, logMode());
+    await runCreateFlow(org, repo);
   });
 
 program
@@ -33,7 +33,7 @@ program
   .description("Apply configured modules to all repos in one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runApplyOrgFlow(org, logMode());
+    await runApplyOrgFlow(org);
   });
 
 program
@@ -41,7 +41,7 @@ program
   .description("Create/update managed teams for one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runInitTeamsFlow(org, logMode());
+    await runInitTeamsFlow(org);
   });
 
 program
@@ -49,7 +49,7 @@ program
   .description("Remove managed teams for one org")
   .argument("<org>", "GitHub organization")
   .action(async (org: string) => {
-    await runRemoveTeamsFlow(org, logMode());
+    await runRemoveTeamsFlow(org);
   });
 
 program
@@ -65,7 +65,7 @@ program
   .argument("<script>", "compat id, e.g. scripts/update_rulesets_org.ts")
   .argument("[args...]", "arguments to pass to the script")
   .action(async (script: string, args: string[] = []) => {
-    await runCompatScript(script, args, logMode());
+    await runCompatScript(script, args);
   });
 
 program

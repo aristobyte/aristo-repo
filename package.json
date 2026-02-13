@@ -2,7 +2,32 @@
   "name": "@aristobyte/repo",
   "version": "1.0.1",
   "description": "CLI for GitHub repo/org bootstrap and policy management",
+  "keywords": [
+    "github",
+    "github-cli",
+    "repository-management",
+    "organization-management",
+    "rulesets",
+    "automation",
+    "devops",
+    "typescript"
+  ],
+  "author": "AristoByte",
+  "license": "MIT",
+  "homepage": "https://github.com/aristobyte/aristo-repo#readme",
+  "bugs": {
+    "url": "https://github.com/aristobyte/aristo-repo/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aristobyte/aristo-repo.git"
+  },
   "type": "module",
+  "main": "dist/cli.js",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "aristo-repo": "dist/cli.js"
   },
@@ -16,19 +41,36 @@
     "start": "node dist/cli.js",
     "build:script": "bash ./scripts/build.sh",
     "bump": "bash ./scripts/bump.sh",
+    "bump:dry-run": "bash ./scripts/bump.sh --dry-run",
+    "publish:stable": "SCOPE=NPM bash ./scripts/publish.sh",
+    "publish:stable:dry-run": "SCOPE=NPM bash ./scripts/publish.sh --dry-run",
     "publish:script": "bash ./scripts/publish.sh",
     "publish:dry-run": "npm publish --dry-run",
     "publish:npm": "npm publish --access public",
-    "release": "npm run check && npm run build && npm run publish:npm"
+    "release:dry-run": "npm run check && npm run build && npm run bump:dry-run && npm run publish:stable:dry-run",
+    "release": "npm run check && npm run build && npm run publish:npm",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "prepare": "husky",
+    "precommit": "lint-staged"
   },
   "dependencies": {
     "chalk": "^5.6.2",
     "commander": "^14.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/node": "^24.3.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.55.0"
   },
   "engines": {
     "node": ">=20"
