@@ -1,6 +1,6 @@
 {
   "name": "@aristobyte/repo",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "description": "CLI for GitHub repo/org bootstrap and policy management",
   "type": "module",
   "bin": {
