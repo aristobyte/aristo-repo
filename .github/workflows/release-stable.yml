@@ -40,7 +40,6 @@ jobs:
         with:
           app-id: ${{ secrets.ARISTO_BOT_ID }}
           private-key: ${{ secrets.ARISTO_BOT_PRIVATE_KEY }}
-          installation-id: ${{ secrets.ARISTO_BOT_INSTALLATION_ID }}
 
       - name: Detect bump type
         run: echo "BUMP_TYPE=$(bash ./scripts/check-version.sh)" >> "$GITHUB_ENV"
