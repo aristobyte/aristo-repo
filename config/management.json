@@ -1,7 +1,6 @@
 {
   "version": 1,
   "execution": {
-    "dry_run": true,
     "allow_private": false,
     "max_repos_per_org": 0
   },
@@ -23,9 +22,7 @@
     ],
     "apply_org_policy": {
       "enabled": false,
-      "orgs": [
-        "aristobyte"
-      ]
+      "orgs": ["aristobyte"]
     }
   }
 }

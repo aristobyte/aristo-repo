@@ -37,10 +37,6 @@ export function styleLine(input: string, mode: LogMode): string {
     return chalk.hex("#FFB020")(line);
   }
 
-  if (/^\[dry-run\]/i.test(line)) {
-    return chalk.blueBright(line);
-  }
-
   if (/^Checking GitHub auth/i.test(line)) {
     return chalk.cyan(line);
   }

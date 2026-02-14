@@ -1,7 +1,6 @@
 {
   "version": 1,
   "defaults": {
-    "dry_run": false,
     "allow_private": true,
     "include_archived": false,
     "max_repos": 0

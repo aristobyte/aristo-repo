@@ -15,19 +15,10 @@ is_valid_type() {
 }
 
 auto_detect_bump_type() {
-  local last_commit_msg
-  last_commit_msg="$(git log -1 --pretty=%s 2>/dev/null || true)"
-
-  case "$last_commit_msg" in
-    feat*|feature*) echo "minor" ;;
-    ref*|refactor*) echo "major" ;;
-    fix*|chore*|docs*) echo "patch" ;;
-    *) echo "patch" ;;
-  esac
+  bash "$ROOT_DIR/scripts/check-version.sh"
 }
 
 BUMP_TYPE=""
-DRY_RUN=0
 
 if [[ $# -gt 0 && ! "${1:-}" =~ ^-- ]]; then
   BUMP_TYPE="$1"
@@ -35,15 +26,8 @@ if [[ $# -gt 0 && ! "${1:-}" =~ ^-- ]]; then
 fi
 
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --dry-run)
-      DRY_RUN=1
-      ;;
-    *)
-      echo "Unknown option: $1" >&2
-      exit 1
-      ;;
-  esac
+  echo "Unknown option: $1" >&2
+  exit 1
   shift
 done
 
@@ -54,11 +38,6 @@ fi
 if ! is_valid_type "$BUMP_TYPE"; then
   echo "Unsupported bump type: $BUMP_TYPE" >&2
   exit 1
-fi
-
-if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "npm version $BUMP_TYPE --no-git-tag-version"
-  exit 0
 fi
 
 npm version "$BUMP_TYPE" --no-git-tag-version

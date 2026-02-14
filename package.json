@@ -1,6 +1,6 @@
 {
   "name": "@aristobyte/repo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI for GitHub repo/org bootstrap and policy management",
   "keywords": [
     "github",
@@ -35,21 +35,20 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit",
+    "ts:compile": "tsc -p tsconfig.json",
+    "ts:check": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
-    "build:script": "bash ./scripts/build.sh",
+    "compile:script": "bash ./scripts/compile.sh",
+    "pack:script": "bash ./scripts/pack.sh",
+    "check-version": "bash ./scripts/check-version.sh",
     "bump": "bash ./scripts/bump.sh",
-    "bump:dry-run": "bash ./scripts/bump.sh --dry-run",
     "publish:stable": "SCOPE=NPM bash ./scripts/publish.sh",
-    "publish:stable:dry-run": "SCOPE=NPM bash ./scripts/publish.sh --dry-run",
     "publish:script": "bash ./scripts/publish.sh",
-    "publish:dry-run": "npm publish --dry-run",
     "publish:npm": "npm publish --access public",
-    "release:dry-run": "npm run check && npm run build && npm run bump:dry-run && npm run publish:stable:dry-run",
-    "release": "npm run check && npm run build && npm run publish:npm",
+    "release": "npm run ts:check && npm run ts:compile && npm run publish:npm",
     "lint": "eslint .",
+    "lint:commit": "commitlint --from=HEAD~1 --to=HEAD --verbose",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -61,6 +60,8 @@
     "commander": "^14.0.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
     "@eslint/js": "^9.0.0",
     "@types/node": "^24.3.0",
     "eslint": "^9.0.0",

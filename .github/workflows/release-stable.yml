@@ -34,33 +34,40 @@ jobs:
           HUSKY: 0
         run: npm install --ignore-scripts
 
-      - name: Lint
-        run: npm run lint
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARISTO_BOT_ID }}
+          private-key: ${{ secrets.ARISTO_BOT_PRIVATE_KEY }}
+          installation-id: ${{ secrets.ARISTO_BOT_INSTALLATION_ID }}
 
-      - name: Type check
-        run: npm run check
-
-      - name: Build
-        run: npm run build
+      - name: Detect bump type
+        run: echo "BUMP_TYPE=$(bash ./scripts/check-version.sh)" >> "$GITHUB_ENV"
 
       - name: Bump version
-        run: bash ./scripts/bump.sh
+        run: bash ./scripts/bump.sh "${BUMP_TYPE}"
 
       - name: Commit and tag
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          git config user.name "AristoByte_GitHub[bot]"
-          git config user.email "AristoByte_GitHub[bot]@users.noreply.github.com"
+          git config user.name "aristo-bot[bot]"
+          git config user.email "aristo-bot[bot]@users.noreply.github.com"
           git add package.json
+          if [[ -f package-lock.json ]]; then
+            git add package-lock.json
+          fi
           git commit -m "chore: publish v$VERSION [skip ci]"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push origin HEAD
           git tag v$VERSION
           git push origin v$VERSION
 
       - name: Create release
         env:
-          SCOPE: GITHUB_PACKAGES
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           gh release create v$VERSION \
@@ -69,8 +76,20 @@ jobs:
             --repo "${GITHUB_REPOSITORY}" \
             --target master
 
+      - name: Compile
+        run: bash ./scripts/compile.sh
+
+      - name: Pack
+        run: bash ./scripts/pack.sh
+
       - name: Publish to npm
         env:
           SCOPE: NPM
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bash ./scripts/publish.sh
+
+      - name: Publish to GitHub Packages
+        env:
+          SCOPE: GITHUB_PACKAGES
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash ./scripts/publish.sh

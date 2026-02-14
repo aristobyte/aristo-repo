@@ -28,7 +28,6 @@ aristo-repo validate
 ```bash
 npm run check
 npm run build
-npm run publish:dry-run
 npm run publish:npm
 ```
 
@@ -38,20 +37,13 @@ One-step publish flow:
 npm run release
 ```
 
-Local dry-run flow:
-
-```bash
-npm run bump:dry-run
-npm run publish:stable:dry-run
-npm run release:dry-run
-```
-
 Shell scripts (under `./scripts/`):
 
 ```bash
-bash ./scripts/build.sh
+bash ./scripts/compile.sh
+bash ./scripts/pack.sh
 bash ./scripts/bump.sh patch
-bash ./scripts/publish.sh --dry-run
+bash ./scripts/publish.sh
 ```
 
 Detailed CLI docs: `./CLI.md`
@@ -74,7 +66,7 @@ The repository is now TS-only for operational logic.
 Use `aristo-repo exec` with legacy command ids for backward compatibility.
 
 ```bash
-aristo-repo exec scripts/update_rulesets_org.ts --org aristobyte --config ./config/management.json --dry-run
+aristo-repo exec scripts/update_rulesets_org.ts --org aristobyte --config ./config/management.json
 aristo-repo exec scripts/validate_project.ts
 ```
 
@@ -93,9 +85,8 @@ aristo-repo exec scripts/validate_project.ts
 - `src/*`: primary TS CLI and module logic
 - `src/commands/*`: command/compat dispatch layer
 - `src/utils/*`: shared utility helpers
-- `scripts/`: reserved for Bash scripts (currently empty)
+- `scripts/`: Bash automation scripts used by CI/release and local maintenance
 
 ## Notes
 
 - Internal scripts are reusable building blocks; avoid calling them unless needed.
-- `dry_run` is controlled from `config/app.config.json`.

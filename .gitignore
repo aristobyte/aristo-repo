@@ -7,8 +7,7 @@ dist/
 .pnpm-store/
 .parcel-cache/
 .turbo/
-.npm-cache/
-coverage/
+coverage/*
 
 # Runtime logs
 *.log

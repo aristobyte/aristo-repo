@@ -4,7 +4,35 @@ import fs from "node:fs";
 import path from "node:path";
 
 const THIS_FILE = fileURLToPath(import.meta.url);
-export const REPO_ROOT = path.resolve(path.dirname(THIS_FILE), "..");
+const PACKAGE_ROOT = path.resolve(path.dirname(THIS_FILE), "..");
+
+function resolveRepoRoot(): string {
+  const envRoot = process.env.ARISTO_REPO_ROOT;
+  if (envRoot) {
+    return path.resolve(envRoot);
+  }
+
+  const cwd = process.cwd();
+  const cwdConfig = path.resolve(cwd, "config/app.config.json");
+  if (fs.existsSync(cwdConfig)) {
+    return cwd;
+  }
+
+  const packagedDistRoot = path.resolve(PACKAGE_ROOT, "dist");
+  const packagedDistConfig = path.resolve(packagedDistRoot, "config/app.config.json");
+  if (fs.existsSync(packagedDistConfig)) {
+    return packagedDistRoot;
+  }
+
+  const packagedConfig = path.resolve(PACKAGE_ROOT, "config/app.config.json");
+  if (fs.existsSync(packagedConfig)) {
+    return PACKAGE_ROOT;
+  }
+
+  return PACKAGE_ROOT;
+}
+
+export const REPO_ROOT = resolveRepoRoot();
 
 type RepoInfo = {
   name: string;
@@ -15,7 +43,7 @@ type RepoInfo = {
 type AppConfig = {
   version?: number;
   defaults?: {
-    dry_run?: boolean;
+    preview?: boolean;
     allow_private?: boolean;
     include_archived?: boolean;
     max_repos?: number;
@@ -40,7 +68,7 @@ type AppConfig = {
 type ManagementConfig = {
   version?: number;
   execution?: {
-    dry_run?: boolean;
+    preview?: boolean;
     allow_private?: boolean;
     max_repos_per_org?: number;
   };
@@ -341,7 +369,7 @@ function resolveRulesetTemplate(
 function upsertRuleset(
   repoFull: string,
   ruleset: Record<string, unknown>,
-  opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; forceRulesetName?: string }
+  opts: { preview: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; forceRulesetName?: string }
 ): void {
   const { org, repo } = parseRepoFull(repoFull);
   const rawTemplate = JSON.stringify(ruleset);
@@ -363,11 +391,11 @@ function upsertRuleset(
     }
   }
 
-  if (opts.dryRun) {
+  if (opts.preview) {
     if (existingId) {
-      console.log(`[dry-run] update ruleset: ${rulesetName}`);
+      console.log(`[preview] update ruleset: ${rulesetName}`);
     } else {
-      console.log(`[dry-run] create ruleset: ${rulesetName}`);
+      console.log(`[preview] create ruleset: ${rulesetName}`);
     }
     return;
   }
@@ -384,12 +412,12 @@ function upsertRuleset(
 export function applyRulesetsRepo(
   repoFull: string,
   configFile: string,
-  opts: { dryRun: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; rulesetName?: string }
+  opts: { preview: boolean; bypassTeamSlug: string; reviewerTeamSlug: string; rulesetName?: string }
 ): void {
   const { rulesets } = loadPolicyConfig(configFile);
   for (const ruleset of rulesets) {
     upsertRuleset(repoFull, ruleset, {
-      dryRun: opts.dryRun,
+      preview: opts.preview,
       bypassTeamSlug: opts.bypassTeamSlug,
       reviewerTeamSlug: opts.reviewerTeamSlug,
       forceRulesetName: rulesets.length === 1 ? opts.rulesetName : ""
@@ -400,7 +428,7 @@ export function applyRulesetsRepo(
 export function applyRulesetsOrg(
   org: string,
   configFile: string,
-  opts: { dryRun: boolean; allowPrivate: boolean; maxRepos: number; bypassTeamSlug: string; reviewerTeamSlug: string }
+  opts: { preview: boolean; allowPrivate: boolean; maxRepos: number; bypassTeamSlug: string; reviewerTeamSlug: string }
 ): void {
   const { rulesets } = loadPolicyConfig(configFile);
   const repos = listRepos(org);
@@ -430,7 +458,7 @@ export function applyRulesetsOrg(
     for (const ruleset of rulesets) {
       try {
         upsertRuleset(`${org}/${repo.name}`, ruleset, {
-          dryRun: opts.dryRun,
+          preview: opts.preview,
           bypassTeamSlug: opts.bypassTeamSlug,
           reviewerTeamSlug: opts.reviewerTeamSlug
         });
@@ -448,18 +476,18 @@ export function applyRulesetsOrg(
   }
 
   console.log(
-    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} preview=${opts.preview ? 1 : 0}`
   );
   if (failed > 0) {
     throw new Error("Rulesets org apply finished with failures");
   }
 }
 
-function patchRepoSettings(repoFull: string, repoSettings: Record<string, unknown>, dryRun: boolean): void {
+function patchRepoSettings(repoFull: string, repoSettings: Record<string, unknown>, preview: boolean): void {
   const { org, repo } = parseRepoFull(repoFull);
   const payload = JSON.stringify(repoSettings);
-  if (dryRun) {
-    console.log(`[dry-run] gh api -X PATCH repos/${org}/${repo} --input repo-settings.config.json`);
+  if (preview) {
+    console.log(`[preview] gh api -X PATCH repos/${org}/${repo} --input repo-settings.config.json`);
     return;
   }
   runGh(["api", "-X", "PATCH", `repos/${org}/${repo}`, "--input", "-"], { input: payload });
@@ -472,7 +500,7 @@ export function applyOneRepoPolicy(
     allowPrivate: boolean;
     repoVisibility?: string;
     repoArchived?: string;
-    dryRun: boolean;
+    preview: boolean;
     bypassTeamSlug: string;
     reviewerTeamSlug: string;
   }
@@ -499,12 +527,12 @@ export function applyOneRepoPolicy(
   }
 
   console.log(`Applying policy to ${repoFull} (visibility=${visibility})`);
-  patchRepoSettings(repoFull, repoSettings, opts.dryRun);
+  patchRepoSettings(repoFull, repoSettings, opts.preview);
 
   let applied = 0;
   for (const ruleset of rulesets) {
     upsertRuleset(repoFull, ruleset, {
-      dryRun: opts.dryRun,
+      preview: opts.preview,
       bypassTeamSlug: opts.bypassTeamSlug,
       reviewerTeamSlug: opts.reviewerTeamSlug,
       forceRulesetName: rulesets.length === 1 ? rulesetName : ""
@@ -523,14 +551,14 @@ export function createRepoCore(
     template: string;
     applyPolicy: boolean;
     allowPrivatePolicy: boolean;
-    dryRun: boolean;
+    preview: boolean;
     configFile: string;
   }
 ): void {
   const repoFull = `${org}/${repo}`;
 
-  if (opts.dryRun) {
-    console.log(`[dry-run] existence check skipped for ${repoFull}`);
+  if (opts.preview) {
+    console.log(`[preview] existence check skipped for ${repoFull}`);
     const parts = [`gh repo create ${repoFull}`, `--${opts.visibility}`, "--clone=false"];
     if (opts.description) {
       parts.push(`--description ${JSON.stringify(opts.description)}`);
@@ -538,7 +566,7 @@ export function createRepoCore(
     if (opts.template) {
       parts.push(`--template ${opts.template}`);
     }
-    console.log(`[dry-run] ${parts.join(" ")}`);
+    console.log(`[preview] ${parts.join(" ")}`);
   } else {
     const view = spawnSync("gh", ["repo", "view", repoFull], { cwd: REPO_ROOT, stdio: "ignore" });
     if (view.status === 0) {
@@ -560,8 +588,8 @@ export function createRepoCore(
     return;
   }
 
-  if (opts.dryRun) {
-    console.log(`[dry-run] apply policy for ${repoFull}`);
+  if (opts.preview) {
+    console.log(`[preview] apply policy for ${repoFull}`);
     return;
   }
 
@@ -574,7 +602,7 @@ export function createRepoCore(
   applyOneRepoPolicy(repoFull, {
     configFile: opts.configFile,
     allowPrivate: opts.allowPrivatePolicy,
-    dryRun: false,
+    preview: false,
     bypassTeamSlug: "aristo-bypass",
     reviewerTeamSlug: "aristobyte-approvers"
   });
@@ -582,7 +610,7 @@ export function createRepoCore(
 
 export function applyOrgPolicy(
   orgs: string[],
-  opts: { allowPrivate: boolean; dryRun: boolean; maxRepos: number; configFile: string }
+  opts: { allowPrivate: boolean; preview: boolean; maxRepos: number; configFile: string }
 ): void {
   let totalSeen = 0;
   let totalApplied = 0;
@@ -621,7 +649,7 @@ export function applyOrgPolicy(
           allowPrivate: opts.allowPrivate,
           repoVisibility: repo.visibility,
           repoArchived: String(repo.isArchived),
-          dryRun: opts.dryRun,
+          preview: opts.preview,
           bypassTeamSlug: "aristo-bypass",
           reviewerTeamSlug: "aristobyte-approvers"
         });
@@ -647,7 +675,7 @@ export function applyOrgPolicy(
   }
 }
 
-export function applyActionsRepo(repoFull: string, configFile: string, dryRun: boolean): void {
+export function applyActionsRepo(repoFull: string, configFile: string, preview: boolean): void {
   const config = loadJsonFile<ActionsConfig>(configFile);
   ensureVersion(configFile, config);
 
@@ -662,14 +690,14 @@ export function applyActionsRepo(repoFull: string, configFile: string, dryRun: b
     throw new Error("selected mode requires at least one pattern");
   }
 
-  if (dryRun) {
-    console.log(`[dry-run] set actions policy on ${repoFull}: mode=${mode}`);
+  if (preview) {
+    console.log(`[preview] set actions policy on ${repoFull}: mode=${mode}`);
     if (mode === "selected") {
       console.log(
-        `[dry-run] selected-actions github_owned_allowed=${toBool(config.policy?.allow_github_owned, true)} verified_allowed=${toBool(config.policy?.allow_verified_creators, false)}`
+        `[preview] selected-actions github_owned_allowed=${toBool(config.policy?.allow_github_owned, true)} verified_allowed=${toBool(config.policy?.allow_verified_creators, false)}`
       );
       for (const pattern of patterns) {
-        console.log(`[dry-run]   pattern: ${pattern}`);
+        console.log(`[preview]   pattern: ${pattern}`);
       }
     }
     return;
@@ -696,7 +724,7 @@ export function applyActionsRepo(repoFull: string, configFile: string, dryRun: b
 export function applyActionsOrg(
   org: string,
   configFile: string,
-  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+  opts: { preview: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
 ): void {
   const repos = listRepos(org);
   let seen = 0;
@@ -722,7 +750,7 @@ export function applyActionsOrg(
     }
 
     try {
-      applyActionsRepo(`${org}/${repo.name}`, configFile, opts.dryRun);
+      applyActionsRepo(`${org}/${repo.name}`, configFile, opts.preview);
       applied += 1;
     } catch (error) {
       failed += 1;
@@ -733,20 +761,20 @@ export function applyActionsOrg(
   }
 
   console.log(
-    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} preview=${opts.preview ? 1 : 0}`
   );
   if (failed > 0) {
     throw new Error("Actions org apply finished with failures");
   }
 }
 
-export function applySecurityRepo(repoFull: string, configFile: string, dryRun: boolean): void {
+export function applySecurityRepo(repoFull: string, configFile: string, preview: boolean): void {
   const config = loadJsonFile<SecurityConfig>(configFile);
   ensureVersion(configFile, config);
   const { org, repo } = parseRepoFull(repoFull);
 
-  if (dryRun) {
-    console.log(`[dry-run] apply security policy on ${repoFull}`);
+  if (preview) {
+    console.log(`[preview] apply security policy on ${repoFull}`);
     return;
   }
 
@@ -786,7 +814,7 @@ export function applySecurityRepo(repoFull: string, configFile: string, dryRun: 
 export function applySecurityOrg(
   org: string,
   configFile: string,
-  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+  opts: { preview: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
 ): void {
   const repos = listRepos(org);
   let seen = 0;
@@ -811,7 +839,7 @@ export function applySecurityOrg(
     }
 
     try {
-      applySecurityRepo(`${org}/${repo.name}`, configFile, opts.dryRun);
+      applySecurityRepo(`${org}/${repo.name}`, configFile, opts.preview);
       applied += 1;
     } catch (error) {
       failed += 1;
@@ -822,14 +850,14 @@ export function applySecurityOrg(
   }
 
   console.log(
-    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} preview=${opts.preview ? 1 : 0}`
   );
   if (failed > 0) {
     throw new Error("Security org apply finished with failures");
   }
 }
 
-export function applyEnvironmentsRepo(repoFull: string, configFile: string, dryRun: boolean): void {
+export function applyEnvironmentsRepo(repoFull: string, configFile: string, preview: boolean): void {
   const config = loadJsonFile<EnvironmentsConfig>(configFile);
   ensureVersion(configFile, config);
   const { org, repo } = parseRepoFull(repoFull);
@@ -841,9 +869,9 @@ export function applyEnvironmentsRepo(repoFull: string, configFile: string, dryR
     const waitTimer = envCfg.wait_timer ?? 0;
     const preventSelfReview = toBool(envCfg.prevent_self_review, false);
 
-    if (dryRun) {
+    if (preview) {
       console.log(
-        `[dry-run] upsert env '${envCfg.name}' on ${repoFull} (wait_timer=${waitTimer} prevent_self_review=${preventSelfReview})`
+        `[preview] upsert env '${envCfg.name}' on ${repoFull} (wait_timer=${waitTimer} prevent_self_review=${preventSelfReview})`
       );
       continue;
     }
@@ -858,7 +886,7 @@ export function applyEnvironmentsRepo(repoFull: string, configFile: string, dryR
 export function applyEnvironmentsOrg(
   org: string,
   configFile: string,
-  opts: { dryRun: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
+  opts: { preview: boolean; allowPrivate: boolean; includeArchived: boolean; maxRepos: number }
 ): void {
   const repos = listRepos(org);
   let seen = 0;
@@ -883,7 +911,7 @@ export function applyEnvironmentsOrg(
     }
 
     try {
-      applyEnvironmentsRepo(`${org}/${repo.name}`, configFile, opts.dryRun);
+      applyEnvironmentsRepo(`${org}/${repo.name}`, configFile, opts.preview);
       applied += 1;
     } catch (error) {
       failed += 1;
@@ -894,7 +922,7 @@ export function applyEnvironmentsOrg(
   }
 
   console.log(
-    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} preview=${opts.preview ? 1 : 0}`
   );
   if (failed > 0) {
     throw new Error("Environments org apply finished with failures");
@@ -926,14 +954,14 @@ function ensureLabel(
   org: string,
   repo: string,
   label: { name: string; color?: string; description?: string },
-  dryRun: boolean
+  preview: boolean
 ): void {
   if (labelIdByName(org, repo, label.name)) {
     console.log(`label exists: ${label.name}`);
     return;
   }
-  if (dryRun) {
-    console.log(`[dry-run] create label: ${label.name}`);
+  if (preview) {
+    console.log(`[preview] create label: ${label.name}`);
     return;
   }
   runGh([
@@ -969,14 +997,14 @@ function ensureCategory(
   org: string,
   repo: string,
   category: { name: string; description?: string; emoji?: string; is_answerable?: boolean },
-  dryRun: boolean
+  preview: boolean
 ): void {
   if (categoryIdByName(org, repo, category.name)) {
     console.log(`category exists: ${category.name}`);
     return;
   }
-  if (dryRun) {
-    console.log(`[dry-run] create category: ${category.name}`);
+  if (preview) {
+    console.log(`[preview] create category: ${category.name}`);
     return;
   }
   runGh([
@@ -1010,7 +1038,7 @@ function createDiscussion(
   org: string,
   repo: string,
   payload: { title: string; body: string; category: string },
-  dryRun: boolean
+  preview: boolean
 ): string {
   const existing = discussionIdByTitle(org, repo, payload.title);
   if (existing) {
@@ -1023,9 +1051,9 @@ function createDiscussion(
     throw new Error(`Missing category for discussion '${payload.title}': ${payload.category}`);
   }
 
-  if (dryRun) {
-    console.log(`[dry-run] create discussion: ${payload.title}`);
-    return "DRY_RUN_ID";
+  if (preview) {
+    console.log(`[preview] create discussion: ${payload.title}`);
+    return "PREVIEW_ID";
   }
 
   const out = runGh([
@@ -1045,12 +1073,12 @@ function createDiscussion(
   return out.trim();
 }
 
-function addLabelsToDiscussion(discussionId: string, labelIds: string[], dryRun: boolean): void {
-  if (!discussionId || discussionId === "DRY_RUN_ID" || labelIds.length === 0) {
+function addLabelsToDiscussion(discussionId: string, labelIds: string[], preview: boolean): void {
+  if (!discussionId || discussionId === "PREVIEW_ID" || labelIds.length === 0) {
     return;
   }
-  if (dryRun) {
-    console.log(`[dry-run] add ${labelIds.length} labels to discussion`);
+  if (preview) {
+    console.log(`[preview] add ${labelIds.length} labels to discussion`);
     return;
   }
 
@@ -1066,7 +1094,7 @@ function addLabelsToDiscussion(discussionId: string, labelIds: string[], dryRun:
   ]);
 }
 
-export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryRun: boolean): void {
+export function ensureDiscussionsRepo(repoFull: string, configFile: string, preview: boolean): void {
   const config = loadJsonFile<DiscussionsConfig>(configFile);
   ensureVersion(configFile, config);
   const { org, repo } = parseRepoFull(repoFull);
@@ -1088,8 +1116,8 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
   const hasDiscussionsEnabled = repoMeta.data?.repository?.hasDiscussionsEnabled === true;
 
   if (!hasDiscussionsEnabled) {
-    if (dryRun) {
-      console.log(`[dry-run] enable discussions for ${repoFull}`);
+    if (preview) {
+      console.log(`[preview] enable discussions for ${repoFull}`);
     } else {
       runGh(["api", "-X", "PATCH", `repos/${org}/${repo}`, "-f", "has_discussions=true"]);
       console.log(`enabled discussions: ${repoFull}`);
@@ -1097,10 +1125,10 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
   }
 
   for (const category of config.template?.categories ?? []) {
-    ensureCategory(org, repo, category, dryRun);
+    ensureCategory(org, repo, category, preview);
   }
   for (const label of config.template?.labels ?? []) {
-    ensureLabel(org, repo, label, dryRun);
+    ensureLabel(org, repo, label, preview);
   }
 
   for (const discussion of config.template?.initial_discussions ?? []) {
@@ -1112,7 +1140,7 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
         body: discussion.body,
         category: discussion.category
       },
-      dryRun
+      preview
     );
 
     const labelIds: string[] = [];
@@ -1122,7 +1150,7 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
         labelIds.push(id);
       }
     }
-    addLabelsToDiscussion(discussionId, labelIds, dryRun);
+    addLabelsToDiscussion(discussionId, labelIds, preview);
   }
 
   console.log(`Done: discussions template initialized for ${repoFull}`);
@@ -1131,7 +1159,7 @@ export function ensureDiscussionsRepo(repoFull: string, configFile: string, dryR
 export function ensureDiscussionsOrg(
   org: string,
   configFile: string,
-  opts: { allowPrivate: boolean; includeArchived: boolean; maxRepos: number; dryRun: boolean }
+  opts: { allowPrivate: boolean; includeArchived: boolean; maxRepos: number; preview: boolean }
 ): void {
   const repos = listRepos(org);
   let seen = 0;
@@ -1156,7 +1184,7 @@ export function ensureDiscussionsOrg(
     }
 
     try {
-      ensureDiscussionsRepo(`${org}/${repo.name}`, configFile, opts.dryRun);
+      ensureDiscussionsRepo(`${org}/${repo.name}`, configFile, opts.preview);
       applied += 1;
     } catch (error) {
       failed += 1;
@@ -1167,7 +1195,7 @@ export function ensureDiscussionsOrg(
   }
 
   console.log(
-    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} dry_run=${opts.dryRun ? 1 : 0}`
+    `Summary: seen=${seen} applied=${applied} skipped=${skipped} failed=${failed} preview=${opts.preview ? 1 : 0}`
   );
   if (failed > 0) {
     throw new Error("Discussions org apply finished with failures");
@@ -1183,13 +1211,13 @@ function ensureTeam(
     privacy: "closed" | "secret";
     notification: "notifications_enabled" | "notifications_disabled";
   },
-  dryRun: boolean
+  preview: boolean
 ): void {
   const exists = runGhResult(["api", `orgs/${org}/teams/${team.slug}`]).status === 0;
 
   if (exists) {
-    if (dryRun) {
-      console.log(`[dry-run] update team ${org}/${team.slug}`);
+    if (preview) {
+      console.log(`[preview] update team ${org}/${team.slug}`);
     } else {
       runGh([
         "api",
@@ -1210,8 +1238,8 @@ function ensureTeam(
     return;
   }
 
-  if (dryRun) {
-    console.log(`[dry-run] create team ${org}/${team.slug}`);
+  if (preview) {
+    console.log(`[preview] create team ${org}/${team.slug}`);
     return;
   }
 
@@ -1239,10 +1267,10 @@ function grantRepoPermission(
   teamSlug: string,
   repoName: string,
   permission: string,
-  dryRun: boolean
+  preview: boolean
 ): void {
-  if (dryRun) {
-    console.log(`[dry-run] grant ${permission} on ${org}/${repoName} to team ${teamSlug}`);
+  if (preview) {
+    console.log(`[preview] grant ${permission} on ${org}/${repoName} to team ${teamSlug}`);
     return;
   }
 
@@ -1259,7 +1287,7 @@ function grantRepoPermission(
 export function initTeams(
   org: string,
   configFile: string,
-  opts: { dryRun: boolean; maxRepos: number; includeArchived: boolean }
+  opts: { preview: boolean; maxRepos: number; includeArchived: boolean }
 ): void {
   const config = loadJsonFile<TeamsConfig>(configFile);
   ensureVersion(configFile, config);
@@ -1297,7 +1325,7 @@ export function initTeams(
         privacy,
         notification
       },
-      opts.dryRun
+      opts.preview
     );
 
     if ((teamCfg.access ?? "all-repos") !== "all-repos") {
@@ -1315,14 +1343,14 @@ export function initTeams(
       if (opts.maxRepos > 0 && count > opts.maxRepos) {
         break;
       }
-      grantRepoPermission(org, teamCfg.slug, repo.name, permission, opts.dryRun);
+      grantRepoPermission(org, teamCfg.slug, repo.name, permission, opts.preview);
     }
   }
 
   console.log("\nDone.");
 }
 
-export function removeTeams(org: string, configFile: string, dryRun: boolean): void {
+export function removeTeams(org: string, configFile: string, preview: boolean): void {
   const config = loadJsonFile<TeamsConfig>(configFile);
   ensureVersion(configFile, config);
 
@@ -1336,8 +1364,8 @@ export function removeTeams(org: string, configFile: string, dryRun: boolean): v
       continue;
     }
 
-    if (dryRun) {
-      console.log(`[dry-run] delete team: ${org}/${team.slug}`);
+    if (preview) {
+      console.log(`[preview] delete team: ${org}/${team.slug}`);
       continue;
     }
 
@@ -1348,14 +1376,14 @@ export function removeTeams(org: string, configFile: string, dryRun: boolean): v
   console.log("Done");
 }
 
-export function ensureOrgTeams(org: string, opts: { ownerUser: string; dryRun: boolean }): void {
+export function ensureOrgTeams(org: string, opts: { ownerUser: string; preview: boolean }): void {
   const ensure = (name: string, slug: string, desc: string): void => {
     if (runGhResult(["api", `orgs/${org}/teams/${slug}`]).status === 0) {
       console.log(`Team exists: ${org}/${slug}`);
       return;
     }
-    if (opts.dryRun) {
-      console.log(`[dry-run] create team: ${org}/${name} (${slug})`);
+    if (opts.preview) {
+      console.log(`[preview] create team: ${org}/${name} (${slug})`);
       return;
     }
     runGh([
@@ -1378,8 +1406,8 @@ export function ensureOrgTeams(org: string, opts: { ownerUser: string; dryRun: b
   ensure("Aristo-Approvers", "aristo-approvers", "Allowed reviewers for protected branch PR approvals");
   ensure("Aristo-Bypass", "aristo-bypass", "Single-user bypass team for emergency ruleset bypass");
 
-  if (opts.dryRun) {
-    console.log(`[dry-run] ensure member: ${opts.ownerUser} in ${org}/aristo-bypass`);
+  if (opts.preview) {
+    console.log(`[preview] ensure member: ${opts.ownerUser} in ${org}/aristo-bypass`);
   } else {
     runGh(["api", "-X", "PUT", `orgs/${org}/teams/aristo-bypass/memberships/${opts.ownerUser}`, "-f", "role=member"]);
     console.log(`Member ensured: ${opts.ownerUser} -> ${org}/aristo-bypass`);
@@ -1426,7 +1454,7 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
   const app = loadJsonFile<AppConfig>(appCfgPath);
   ensureVersion(appCfgPath, app);
 
-  const dryRun = toBool(app.defaults?.dry_run, false);
+  const preview = toBool(app.defaults?.preview, false);
   const enableRepoCreate = toBool(app.modules?.repo_create?.enabled, true);
   const enableRulesets = toBool(app.modules?.rulesets?.enabled, true);
   const enableDiscussions = toBool(app.modules?.discussions?.enabled, true);
@@ -1454,14 +1482,14 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
       template,
       applyPolicy: applyRepoPolicy,
       allowPrivatePolicy: true,
-      dryRun,
+      preview,
       configFile: rulesetsCfg
     });
   }
 
   if (enableRulesets) {
     applyRulesetsRepo(`${org}/${repo}`, rulesetsCfg, {
-      dryRun,
+      preview,
       bypassTeamSlug: "aristo-bypass",
       reviewerTeamSlug: "aristobyte-approvers"
     });
@@ -1469,7 +1497,7 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
 
   if (enableDiscussions) {
     try {
-      ensureDiscussionsRepo(`${org}/${repo}`, discussionsCfg, dryRun);
+      ensureDiscussionsRepo(`${org}/${repo}`, discussionsCfg, preview);
     } catch {
       optionalFailures.push("discussions");
     }
@@ -1477,7 +1505,7 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
 
   if (enableActions) {
     try {
-      applyActionsRepo(`${org}/${repo}`, actionsCfg, dryRun);
+      applyActionsRepo(`${org}/${repo}`, actionsCfg, preview);
     } catch {
       optionalFailures.push("actions");
     }
@@ -1485,7 +1513,7 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
 
   if (enableSecurity) {
     try {
-      applySecurityRepo(`${org}/${repo}`, securityCfg, dryRun);
+      applySecurityRepo(`${org}/${repo}`, securityCfg, preview);
     } catch {
       optionalFailures.push("security");
     }
@@ -1493,7 +1521,7 @@ export async function runCreateFlow(org: string, repo: string): Promise<void> {
 
   if (enableEnvironments) {
     try {
-      applyEnvironmentsRepo(`${org}/${repo}`, environmentsCfg, dryRun);
+      applyEnvironmentsRepo(`${org}/${repo}`, environmentsCfg, preview);
     } catch {
       optionalFailures.push("environments");
     }
@@ -1514,7 +1542,7 @@ export async function runApplyOrgFlow(org: string): Promise<void> {
   const app = loadJsonFile<AppConfig>(appCfgPath);
   ensureVersion(appCfgPath, app);
 
-  const dryRun = toBool(app.defaults?.dry_run, false);
+  const preview = toBool(app.defaults?.preview, false);
   const allowPrivate = toBool(app.defaults?.allow_private, true);
   const includeArchived = toBool(app.defaults?.include_archived, false);
   const maxRepos = typeof app.defaults?.max_repos === "number" ? app.defaults.max_repos : 0;
@@ -1527,7 +1555,7 @@ export async function runApplyOrgFlow(org: string): Promise<void> {
 
   if (toBool(app.modules?.rulesets?.enabled, true)) {
     applyRulesetsOrg(org, rulesetsCfg, {
-      dryRun,
+      preview,
       allowPrivate,
       maxRepos,
       bypassTeamSlug: "aristo-bypass",
@@ -1536,19 +1564,19 @@ export async function runApplyOrgFlow(org: string): Promise<void> {
   }
 
   if (toBool(app.modules?.actions?.enabled, true)) {
-    applyActionsOrg(org, actionsCfg, { dryRun, allowPrivate, includeArchived, maxRepos });
+    applyActionsOrg(org, actionsCfg, { preview, allowPrivate, includeArchived, maxRepos });
   }
 
   if (toBool(app.modules?.security?.enabled, true)) {
-    applySecurityOrg(org, securityCfg, { dryRun, allowPrivate, includeArchived, maxRepos });
+    applySecurityOrg(org, securityCfg, { preview, allowPrivate, includeArchived, maxRepos });
   }
 
   if (toBool(app.modules?.environments?.enabled, true)) {
-    applyEnvironmentsOrg(org, environmentsCfg, { dryRun, allowPrivate, includeArchived, maxRepos });
+    applyEnvironmentsOrg(org, environmentsCfg, { preview, allowPrivate, includeArchived, maxRepos });
   }
 
   if (toBool(app.modules?.discussions?.enabled, true)) {
-    ensureDiscussionsOrg(org, discussionsCfg, { dryRun, allowPrivate, includeArchived, maxRepos });
+    ensureDiscussionsOrg(org, discussionsCfg, { preview, allowPrivate, includeArchived, maxRepos });
   }
 }
 
@@ -1566,11 +1594,11 @@ export async function runInitTeamsFlow(org: string): Promise<void> {
   }
 
   const teamsCfg = pickConfig(app.modules?.teams?.config, "./config/teams.config.json");
-  const dryRun = toBool(app.defaults?.dry_run, false);
+  const preview = toBool(app.defaults?.preview, false);
   const includeArchived = toBool(app.defaults?.include_archived, false);
   const maxRepos = typeof app.defaults?.max_repos === "number" ? app.defaults.max_repos : 0;
 
-  initTeams(org, teamsCfg, { dryRun, includeArchived, maxRepos });
+  initTeams(org, teamsCfg, { preview, includeArchived, maxRepos });
 }
 
 export async function runRemoveTeamsFlow(org: string): Promise<void> {
@@ -1582,8 +1610,8 @@ export async function runRemoveTeamsFlow(org: string): Promise<void> {
   ensureVersion(appCfgPath, app);
 
   const teamsCfg = pickConfig(app.modules?.teams?.config, "./config/teams.config.json");
-  const dryRun = toBool(app.defaults?.dry_run, false);
-  removeTeams(org, teamsCfg, dryRun);
+  const preview = toBool(app.defaults?.preview, false);
+  removeTeams(org, teamsCfg, preview);
 }
 
 export function runValidateFlow(): void {
@@ -1603,7 +1631,7 @@ export function runManage(command: "validate" | "plan" | "run", configFile: stri
   const config = loadJsonFile<ManagementConfig>(cfgPath);
   ensureVersion(cfgPath, config);
 
-  const dryRun = toBool(config.execution?.dry_run, true);
+  const preview = toBool(config.execution?.preview, true);
   const allowPrivate = toBool(config.execution?.allow_private, false);
   const maxRepos = typeof config.execution?.max_repos_per_org === "number" ? config.execution.max_repos_per_org : 0;
   const createRepos = config.operations?.create_repos ?? [];
@@ -1622,7 +1650,7 @@ export function runManage(command: "validate" | "plan" | "run", configFile: stri
     const name = typeof ruleset.name === "string" ? ruleset.name : "<unnamed>";
     console.log(`- ${name}`);
   }
-  console.log(`dry_run=${dryRun}`);
+  console.log(`preview=${preview}`);
   console.log(`allow_private=${allowPrivate}`);
   console.log(`max_repos=${maxRepos}`);
 
@@ -1657,12 +1685,12 @@ export function runManage(command: "validate" | "plan" | "run", configFile: stri
       template: item.template ?? "",
       applyPolicy: toBool(item.apply_policy, true),
       allowPrivatePolicy: allowPrivate,
-      dryRun,
+      preview,
       configFile: cfgPath
     });
   }
 
   if (applyOrgEnabled && applyOrgOrgs.length > 0) {
-    applyOrgPolicy(applyOrgOrgs, { allowPrivate, dryRun, maxRepos, configFile: cfgPath });
+    applyOrgPolicy(applyOrgOrgs, { allowPrivate, preview, maxRepos, configFile: cfgPath });
   }
 }

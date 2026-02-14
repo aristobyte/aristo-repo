@@ -1,2 +1,4 @@
 - categories and section in discussion should be first deleted (all of them) later on we should creat the labals and later on only create the categories and as the last step to create the sections. After done we should init discussion from templates from config.
-- remove the current CI logic it should be executed from app level, not from github... instead a publish logic should be created
+- bypass for workflows
+- separate rulesets for the release-manager byppass from the core rulesets. In this way the bypass would be applied only to release scope not to general core scope.
+- add the aristo-bot github app into template app and bypass it. check if the RELEASE_APP_ID, RELEASE_APP_PRIVATE_KEY, RELEASE_APP_INSTALLATION_ID add info about this one in readme or figure out how to handle these vars for end users...

@@ -94,7 +94,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       const repoFull = parseFlagValue(args, "--repo");
       const configFile = resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/management.json"));
       applyRulesetsRepo(repoFull, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         bypassTeamSlug: parseFlagValue(args, "--bypass-team-slug", "aristo-bypass"),
         reviewerTeamSlug: parseFlagValue(args, "--reviewer-team-slug", "aristobyte-approvers")
       });
@@ -106,7 +106,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       const org = parseFlagValue(args, "--org");
       const configFile = resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/management.json"));
       applyRulesetsOrg(org, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         allowPrivate: hasFlag(args, "--allow-private"),
         maxRepos: parseIntFlag(args, "--max-repos", 0),
         bypassTeamSlug: parseFlagValue(args, "--bypass-team-slug", "aristo-bypass"),
@@ -120,7 +120,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       applyActionsRepo(
         parseFlagValue(args, "--repo"),
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/actions.config.json")),
-        hasFlag(args, "--dry-run")
+        false
       );
       return;
     }
@@ -137,7 +137,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         throw new Error("Missing .org in config and --org was not provided");
       }
       applyActionsOrg(org, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         allowPrivate: hasFlag(args, "--allow-private") || toBool(config.execution?.include_private, true),
         includeArchived: hasFlag(args, "--include-archived") || toBool(config.execution?.include_archived, false),
         maxRepos: parseIntFlag(args, "--max-repos", 0)
@@ -150,7 +150,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       applySecurityRepo(
         parseFlagValue(args, "--repo"),
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/security.config.json")),
-        hasFlag(args, "--dry-run")
+        false
       );
       return;
     }
@@ -167,7 +167,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         throw new Error("Missing .org in config and --org was not provided");
       }
       applySecurityOrg(org, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         allowPrivate: hasFlag(args, "--allow-private") || toBool(config.execution?.include_private, true),
         includeArchived: hasFlag(args, "--include-archived") || toBool(config.execution?.include_archived, false),
         maxRepos: parseIntFlag(args, "--max-repos", 0)
@@ -180,7 +180,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       applyEnvironmentsRepo(
         parseFlagValue(args, "--repo"),
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/environments.config.json")),
-        hasFlag(args, "--dry-run")
+        false
       );
       return;
     }
@@ -197,7 +197,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         throw new Error("Missing .org in config and --org was not provided");
       }
       applyEnvironmentsOrg(org, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         allowPrivate: hasFlag(args, "--allow-private") || toBool(config.execution?.include_private, true),
         includeArchived: hasFlag(args, "--include-archived") || toBool(config.execution?.include_archived, false),
         maxRepos: parseIntFlag(args, "--max-repos", 0)
@@ -210,7 +210,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       ensureDiscussionsRepo(
         parseFlagValue(args, "--repo"),
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")),
-        hasFlag(args, "--dry-run")
+        false
       );
       return;
     }
@@ -222,7 +222,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         org,
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/discussions.config.json")),
         {
-          dryRun: hasFlag(args, "--dry-run"),
+          preview: false,
           allowPrivate: hasFlag(args, "--allow-private"),
           includeArchived: hasFlag(args, "--include-archived"),
           maxRepos: parseIntFlag(args, "--max-repos", 0)
@@ -240,7 +240,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         throw new Error("Missing .org in config and --org was not provided");
       }
       initTeams(org, configFile, {
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         includeArchived: hasFlag(args, "--include-archived"),
         maxRepos: parseIntFlag(args, "--max-repos", 0)
       });
@@ -253,7 +253,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       removeTeams(
         org,
         resolvePathFromRoot(REPO_ROOT, parseFlagValue(args, "--config", "./config/teams.config.json")),
-        hasFlag(args, "--dry-run")
+        false
       );
       return;
     }
@@ -262,11 +262,11 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
     case "scripts/ensure_org_teams.ts": {
       const org = args[0];
       if (!org || org.startsWith("--")) {
-        throw new Error("Usage: ensure_org_teams <org> [--owner-user USER] [--dry-run]");
+        throw new Error("Usage: ensure_org_teams <org> [--owner-user USER]");
       }
       ensureOrgTeams(org, {
         ownerUser: parseFlagValue(args, "--owner-user", "aristobyte-team"),
-        dryRun: hasFlag(args, "--dry-run")
+        preview: false
       });
       return;
     }
@@ -286,7 +286,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         allowPrivate: hasFlag(rest, "--allow-private"),
         repoVisibility: parseFlagValue(rest, "--repo-visibility", ""),
         repoArchived: parseFlagValue(rest, "--repo-archived", ""),
-        dryRun: hasFlag(rest, "--dry-run"),
+        preview: false,
         bypassTeamSlug: "aristo-bypass",
         reviewerTeamSlug: "aristobyte-approvers"
       });
@@ -307,7 +307,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
         template: parseFlagValue(rest, "--template", ""),
         applyPolicy: !hasFlag(rest, "--no-apply-policy"),
         allowPrivatePolicy: hasFlag(rest, "--allow-private-policy"),
-        dryRun: hasFlag(rest, "--dry-run"),
+        preview: false,
         configFile: path.resolve(REPO_ROOT, "config/management.json")
       });
       return;
@@ -318,7 +318,7 @@ export async function runCompatScript(scriptInput: string, args: string[]): Prom
       const orgs = parseOrgList(args);
       applyOrgPolicy(orgs.length > 0 ? orgs : ["aristobyte", "aristobyte-ui"], {
         allowPrivate: hasFlag(args, "--allow-private"),
-        dryRun: hasFlag(args, "--dry-run"),
+        preview: false,
         maxRepos: parseIntFlag(args, "--max-repos", 0),
         configFile: path.resolve(REPO_ROOT, "config/management.json")
       });

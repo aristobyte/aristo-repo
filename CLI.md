@@ -7,7 +7,7 @@ TypeScript CLI package for managing AristoByte GitHub org/repo setup from one co
 ```bash
 cd ./aristo-repo
 npm install
-npm run build
+npm run ts:compile
 npm link
 ```
 
@@ -39,7 +39,7 @@ aristo-repo doctor
 
 The CLI colorizes shell script output by semantic patterns:
 
-- errors/warnings/skips/dry-run
+- errors/warnings/skips
 - repo headers (`==> ...`)
 - create/update/delete success lines
 - summaries and validation lines
